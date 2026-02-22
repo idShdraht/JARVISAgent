@@ -167,9 +167,31 @@
                 <p class="subtitle">Click the button below. The installer will run silently — watch the progress here.
                 </p>
 
-                <button class="btn btn-gold btn-block" id="btn-install-pc" onclick="runPCInstall()">
-                  ⚡ Install JARVIS on This PC
-                </button>
+                <div class="alert alert-info show" style="margin-bottom:24px">
+                  <div style="display:flex;gap:12px;align-items:center">
+                    <div style="font-size:20px">⚡</div>
+                    <div>
+                      <strong>One-Click Install Ready</strong><br>
+                      <span style="font-size:12px;opacity:0.8">We've detected your platform. Click below to start the
+                        automatic background setup.</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display:flex;gap:12px;margin-bottom:24px;align-items:center">
+                  <button class="btn btn-gold btn-block" id="btn-install-pc" onclick="runPCInstall()"
+                    style="flex:2;margin:0">
+                    🚀 Start Automatic Install
+                  </button>
+                  <div id="install-status"
+                    style="display:none;align-items:center;gap:8px;font-size:12px;color:var(--cy);font-weight:600">
+                    <span class="spinner" style="width:14px;height:14px;border-width:2px;margin:0"></span>
+                    <span id="install-status-text">INITIALIZING</span>
+                  </div>
+                  <button class="btn btn-outline" id="btn-auth-only" onclick="startOnboarding()" style="flex:1">
+                    🔐 Auth Only
+                  </button>
+                </div>
 
                 <div id="terminal">
                   <div id="terminal-lines">

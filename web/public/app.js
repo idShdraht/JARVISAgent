@@ -315,10 +315,16 @@ let sseConnected = false;
 
 window.runPCInstall = async () => {
     const btn = document.getElementById('btn-install-pc');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner" style="width:18px;height:18px;border-width:2px;margin:0"></span> Installing...';
+    const terminal = document.getElementById('terminal');
 
-    addTermLine('[ JARVIS ] Connecting to installer...', 'sys');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner" style="width:18px;height:18px;border-width:2px;margin:0"></span> Orchestrating...';
+
+    // Scroll to terminal
+    terminal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    addTermLine('[ JARVIS ] Booting Installation Engine...', 'sys');
+    addTermLine('[ JARVIS ] Establishing Secure Bridge...', 'sys');
 
     // Open SSE connection first
     if (!sseConnected) {
@@ -333,45 +339,28 @@ window.runPCInstall = async () => {
             body: JSON.stringify({ targetPlatform: selectedPlatform }),
         });
         const data = await res.json();
+
         if (!res.ok) {
-            addTermLine('Error: ' + (data.error || 'Could not start installer'), 'err');
+            addTermLine('ERROR: ' + (data.error || 'Bridge Deployment Failed'), 'err');
             btn.disabled = false;
-            btn.textContent = '⚡ Install JARVIS on This PC';
+            btn.textContent = '⚡ Retry Installation';
+            document.getElementById('install-status').style.display = 'none';
         } else {
-            addTermLine('[ JARVIS ] Installer started — please wait...', 'sys');
+            addTermLine('[ JARVIS ] Local setup sequence initiated.', 'sys');
+            addTermLine('[ JARVIS ] Streaming live logs from node process...', 'info');
+            document.getElementById('btn-install-pc').style.display = 'none';
+            document.getElementById('btn-auth-only').style.display = 'none';
+            document.getElementById('install-status').style.display = 'flex';
+            document.getElementById('install-status-text').textContent = 'BOOTING ENGINE...';
         }
     } catch (e) {
-        addTermLine('Network error: ' + e.message, 'err');
+        addTermLine('CRITICAL ERROR: ' + e.message, 'err');
         btn.disabled = false;
-        btn.textContent = '⚡ Install JARVIS on This PC';
+        btn.textContent = '⚡ Retry Installation';
     }
 };
 
-// ─── SSE connection ────────────────────────────────────
-const connectSSE = () => {
-    const es = new EventSource('/api/setup/sse');
-    es.onmessage = (e) => {
-        let payload;
-        try { payload = JSON.parse(e.data); } catch { return; }
-        const { type, data } = payload;
-
-        switch (type) {
-            case 'log': addTermLine(data, 'ok'); break;
-            case 'error': addTermLine(data, 'err'); break;
-            case 'start': addTermLine(data, 'hd'); break;
-            case 'done':
-                addTermLine(data, 'ok');
-                document.getElementById('install-done-banner').style.display = 'block';
-                document.getElementById('btn-install-pc').style.display = 'none';
-                markSetupDone(selectedPlatform);
-                es.close();
-                break;
-        }
-    };
-    es.onerror = () => addTermLine('[info] Waiting for installer...', 'info');
-};
-
-// ─── Terminal helpers ──────────────────────────────────
+// ─── Terminal Helper ───────────────────────────────────
 const addTermLine = (text, cls = 'ok') => {
     const container = document.getElementById('terminal-lines');
     const term = document.getElementById('terminal');
@@ -383,6 +372,15 @@ const addTermLine = (text, cls = 'ok') => {
     const icons = { ok: '✔ ', err: '✘ ', hd: '⟫ ', sys: '◆ ', info: '' };
     line.textContent = (icons[cls] || '') + text;
     container.appendChild(line);
+
+    // Update status badge if STEP is detected
+    if (text.includes('STEP')) {
+        const stepMatch = text.match(/STEP (\d+)/i);
+        const statusText = document.getElementById('install-status-text');
+        if (statusText) {
+            statusText.textContent = `PHASE ${stepMatch ? stepMatch[1] : '...'} · ${text.split('·')[1] || 'PROCESSING'}`;
+        }
+    }
 
     const cur = document.createElement('span');
     cur.className = 'cursor';
@@ -502,28 +500,49 @@ const hideChoices = () => {
     document.getElementById('onboard-choices').classList.remove('visible');
 };
 
-const selectChoice = (num, label, cardEl) => {
+const selectChoice = async (num, label, cardEl) => {
+    if (piping) return;
+
     // Visual feedback
     document.querySelectorAll('.choice-card').forEach(c => c.classList.remove('selected'));
     cardEl.classList.add('selected');
 
-    addOnboardLine(`▶ Selected: ${label}`, 'sys');
     hideChoices();
     hidePrompt();
 
+    // ─── Simulated Typing Effect ───
+    // This makes it feel like the UI is "auto-pasting" into the terminal
+    const terminalLines = document.getElementById('onboard-lines');
+    const inputLine = document.createElement('div');
+    inputLine.className = 't-line t-sys';
+    inputLine.innerHTML = `<span style="opacity:0.6">▶ </span><span class="typing-text"></span><span class="cursor" style="height:12px;width:6px"></span>`;
+    terminalLines.appendChild(inputLine);
+
+    const typingSpan = inputLine.querySelector('.typing-text');
+    const textToType = label; // We show the label but send the number
+
+    for (let i = 0; i <= textToType.length; i++) {
+        typingSpan.textContent = textToType.slice(0, i);
+        await new Promise(r => setTimeout(r, 20 + Math.random() * 30));
+    }
+    inputLine.querySelector('.cursor').remove();
+    // ──────────────────────────────
+
     // Send the number to the process stdin
     piping = true;
-    fetch('/api/onboard/input', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: num }),
-    }).then(r => r.json()).then(d => {
-        if (!d.ok) showOnboardError(d.error || 'Could not send choice');
+    try {
+        const res = await fetch('/api/onboard/input', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: num }),
+        });
+        const d = await res.json();
+        if (!d.ok) showOnboardError(d.error || 'Automation Bridge Interrupted');
+    } catch (e) {
+        showOnboardError('Network link lost: ' + e.message);
+    } finally {
         piping = false;
-    }).catch(e => {
-        showOnboardError(e.message);
-        piping = false;
-    });
+    }
 };
 
 let piping = false;
@@ -532,15 +551,32 @@ let piping = false;
 window.submitOnboardAnswer = async () => {
     const input = document.getElementById('onboard-answer');
     const text = input.value.trim();
-    if (!text) { input.focus(); return; }
-    if (piping) return;
+    if (!text || piping) { input.focus(); return; }
 
     const btn = document.getElementById('btn-onboard-submit');
     btn.disabled = true;
 
-    // Show in terminal (mask secrets)
+    // ─── Simulated Typing Effect ───
+    const terminalLines = document.getElementById('onboard-lines');
+    const inputLine = document.createElement('div');
+    inputLine.className = 't-line t-sys';
+
+    // Mask secrets in terminal
     const isSecret = isSecretPrompt(document.getElementById('onboard-question').textContent || '');
-    addOnboardLine('▶ ' + (isSecret ? '****' : text), 'sys');
+    const displayText = isSecret ? '••••••••' : text;
+
+    inputLine.innerHTML = `<span style="opacity:0.6">▶ </span><span class="typing-text"></span><span class="cursor" style="height:12px;width:6px"></span>`;
+    terminalLines.appendChild(inputLine);
+
+    const typingSpan = inputLine.querySelector('.typing-text');
+    for (let i = 0; i <= displayText.length; i++) {
+        typingSpan.textContent = displayText.slice(0, i);
+        // Type faster for manual text
+        await new Promise(r => setTimeout(r, 10 + Math.random() * 20));
+    }
+    inputLine.querySelector('.cursor').remove();
+    // ──────────────────────────────
+
     hidePrompt();
     hideChoices();
 
@@ -552,16 +588,16 @@ window.submitOnboardAnswer = async () => {
             body: JSON.stringify({ text }),
         });
         const data = await res.json();
-        if (!data.ok) showOnboardError(data.error || 'Failed to send answer');
+        if (!data.ok) showOnboardError(data.error || 'Automation bridge pipe broken');
     } catch (e) {
-        showOnboardError(e.message);
+        showOnboardError('Network link lost: ' + e.message);
     } finally {
         piping = false;
         btn.disabled = false;
+        input.value = '';
     }
 };
 
-// ─── Error handling ────────────────────────────────────
 const showOnboardError = (msg) => {
     document.getElementById('onboard-error-msg').textContent = msg;
     document.getElementById('onboard-error-banner').classList.add('visible');
@@ -572,30 +608,25 @@ window.hideOnboardError = () => {
 };
 
 window.restartOnboarding = async () => {
-    // Stop current process
     try { await fetch('/api/onboard/stop', { method: 'POST' }); } catch { }
-
-    // Reset UI
     document.getElementById('onboard-lines').innerHTML = '<div class="t-line t-sys">◆ Restarting wizard...</div>';
     document.getElementById('onboard-error-banner').classList.remove('visible');
     document.getElementById('onboard-success').classList.remove('visible');
     hidePrompt();
     hideChoices();
-
-    // Restart
     setTimeout(() => startOnboarding(), 300);
 };
 
-// ─── SSE for onboarding ────────────────────────────────
-let onboardSSE = null;
+// ─── SSE connection ────────────────────────────────────
+let globalSSE = null;
 let lastChoiceOptions = [];
 let lastOnboardLogLine = ''; // for context when a prompt arrives
 
-const connectOnboardSSE = () => {
-    if (onboardSSE) { try { onboardSSE.close(); } catch { } }
-    onboardSSE = new EventSource('/api/setup/sse');
+const connectSSE = (mode = 'setup') => {
+    if (globalSSE) { try { globalSSE.close(); } catch { } }
+    globalSSE = new EventSource('/api/setup/sse');
 
-    onboardSSE.onmessage = (e) => {
+    globalSSE.onmessage = (e) => {
         let payload;
         try { payload = JSON.parse(e.data); } catch { return; }
         const { type, data } = payload;
@@ -607,9 +638,17 @@ const connectOnboardSSE = () => {
             case 'start': addTermLine(data, 'hd'); break;
             case 'done':
                 addTermLine(data, 'ok');
+                addTermLine('[ JARVIS ] System Installed Successfully.', 'hd');
+                addTermLine('[ JARVIS ] Auto-transitioning to Setup Wizard in 3s...', 'sys');
+
                 document.getElementById('install-done-banner').style.display = 'block';
                 document.getElementById('btn-install-pc').style.display = 'none';
                 markSetupDone(selectedPlatform);
+
+                // One-click automation: Auto-start wizard
+                setTimeout(() => startOnboarding(), 3000);
+                globalSSE.close();
+                globalSSE = null;
                 break;
 
             // ── Onboarding events ──
@@ -630,7 +669,6 @@ const connectOnboardSSE = () => {
             case 'choice': {
                 const { options } = data;
                 lastChoiceOptions = options;
-                // Use last log line as the question context
                 const q = lastOnboardLogLine || 'Choose an option:';
                 showChoices(options, q);
                 break;
@@ -639,8 +677,6 @@ const connectOnboardSSE = () => {
             case 'onboard_prompt': {
                 const promptText = data;
                 lastOnboardLogLine = promptText;
-
-                // If recent choices are pending, show them with this prompt as the question
                 if (lastChoiceOptions.length) {
                     showChoices(lastChoiceOptions, promptText);
                     lastChoiceOptions = [];
@@ -659,21 +695,17 @@ const connectOnboardSSE = () => {
                 break;
 
             case 'onboard_failed':
-                addOnboardLine('✘ ' + data, 'err');
+            case 'onboard_error':
+                addOnboardLine('✘ ' + (data.message || data), 'err');
                 hidePrompt();
                 hideChoices();
-                showOnboardError(data);
-                break;
-
-            case 'onboard_error':
-                addOnboardLine('✘ ' + data, 'err');
-                showOnboardError(data);
+                showOnboardError(data.message || data);
                 break;
         }
     };
 
-    onboardSSE.onerror = () => {
-        // Silently reconnect — process may have restarted
+    globalSSE.onerror = () => {
+        if (mode === 'setup') addTermLine('[info] Synchronizing with installer...', 'info');
     };
 };
 
@@ -694,7 +726,7 @@ window.startOnboarding = async () => {
     lastOnboardLogLine = '';
 
     // Connect SSE first
-    connectOnboardSSE();
+    connectSSE('onboard');
 
     // Trigger the process
     try {
