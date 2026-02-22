@@ -293,6 +293,11 @@ window.runRemoteSetup = async () => {
         });
         // Wait for next CMD to be polled or UI to reflect progress
     }
+
+    // Auto-advance to Step 3 (Watch logs)
+    setTimeout(() => {
+        nextAndroidStep();
+    }, 1500);
 };
 
 // ─── Android Guide ─────────────────────────────────────
@@ -439,10 +444,13 @@ window.nextAndroidStep = () => {
 };
 
 window.copyCmd = () => {
-    const cmd = document.getElementById('install-cmd')?.textContent?.trim();
-    navigator.clipboard.writeText(cmd).then(() => {
-        showAlert('dash-alert', '📋 Command copied! Paste it in Termux.', 'success');
-    });
+    const cmd = document.getElementById('link-cmd')?.textContent?.trim() ||
+        document.getElementById('install-cmd')?.textContent?.trim();
+    if (cmd) {
+        navigator.clipboard.writeText(cmd).then(() => {
+            showAlert('dash-alert', '📋 Command copied! Paste it in Termux.', 'success');
+        });
+    }
 };
 
 // ─── PC Installer ──────────────────────────────────────
