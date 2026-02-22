@@ -1241,6 +1241,25 @@ input::placeholder {
     padding: 16px;
   }
 
+  .topbar {
+    padding: 0 16px;
+    gap: 8px;
+    height: 56px;
+  }
+
+  .topbar-logo {
+    font-size: 16px;
+    letter-spacing: 2px;
+  }
+
+  .user-email {
+    display: none;
+  }
+
+  .topbar-user {
+    gap: 8px;
+  }
+
   .card {
     padding: 24px 20px;
   }
