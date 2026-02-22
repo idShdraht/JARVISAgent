@@ -1230,3 +1230,94 @@ input::placeholder {
 .t-warn {
   color: var(--gd);
 }
+
+/* ─── Responsive Queries ──────────────────────────────── */
+@media (max-width: 768px) {
+  :root {
+    --radius: 12px;
+  }
+
+  .screen {
+    padding: 16px;
+  }
+
+  .card {
+    padding: 24px 20px;
+  }
+
+  .logo-ring {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 15px;
+  }
+
+  .logo-j {
+    font-size: 24px;
+  }
+
+  .logo-title {
+    font-size: 20px;
+    letter-spacing: 4px;
+  }
+
+  .welcome-title {
+    font-size: 24px;
+  }
+
+  .platform-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .platform-card {
+    padding: 20px;
+  }
+
+  .wizard-steps {
+    gap: 10px;
+  }
+
+  .step-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .step-label {
+    font-size: 10px;
+  }
+
+  .terminal {
+    padding: 15px;
+    font-size: 11px;
+  }
+
+  .choice-card {
+    padding: 12px;
+  }
+
+  .choice-icon {
+    font-size: 20px;
+  }
+
+  /* Fix for the "zoomed in" feel - ensure elements don't overflow */
+  body {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo-title {
+    font-size: 18px;
+    letter-spacing: 2px;
+  }
+
+  .card {
+    padding: 20px 15px;
+  }
+
+  .terminal-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+}

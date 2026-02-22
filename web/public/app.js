@@ -154,7 +154,8 @@ document.getElementById('form-set-password')?.addEventListener('submit', async (
 
 // ─── Logout ────────────────────────────────────────────
 window.logout = async () => {
-    await fetch('/api/logout', { method: 'POST' });
+    // Both /auth/logout and /api/logout work, but /auth/logout is the standard passport route
+    await fetch('/auth/logout', { method: 'POST' });
     currentUser = null;
     showScreen('login');
 };
