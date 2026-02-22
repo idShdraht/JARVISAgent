@@ -42,7 +42,7 @@ bash JARVIS/jarvis.sh
 | Requirement | Details |
 |---|---|
 | Device | Android ARM64 (64-bit) |
-| App | [Termux (F-Droid)](https://f-droid.org/packages/com.termux/) — **NOT Play Store** |
+| App | [Termux (GitHub)](https://github.com/termux/termux-app/releases) — **NOT Play Store** |
 | Storage | ≥ 2 GB free |
 | Network | Stable internet connection |
 
