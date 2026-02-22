@@ -183,17 +183,84 @@ window.selectPlatform = (platform) => {
     document.getElementById('setup-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
+const TERMUX_GITHUB_URL = 'https://github.com/termux/termux-app/releases/download/v0.118.1/termux-app_v0.118.1+github-debug_arm64-v8a.apk';
+let termuxDownloaded = false;
+
+window.startAndroidDownload = async () => {
+    const box = document.getElementById('termux-download-box');
+    const bar = document.getElementById('termux-progress-bar');
+    const status = document.getElementById('termux-download-status');
+    const nextBtn = document.getElementById('btn-android-next');
+
+    if (termuxDownloaded) return;
+
+    box.classList.add('downloading');
+
+    // Start actual download in background
+    const link = document.createElement('a');
+    link.href = TERMUX_GITHUB_URL;
+    link.download = 'termux-arm64.apk';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Simulate cool progress
+    const phases = [
+        { p: 15, t: 'Connecting to GitHub...' },
+        { p: 35, t: 'Requesting ARM64 Binary...' },
+        { p: 65, t: 'Downloading APK Package (95MB)...' },
+        { p: 90, t: 'Verifying Integrity...' },
+        { p: 100, t: 'Download Initialized!' }
+    ];
+
+    for (const phase of phases) {
+        status.textContent = phase.t;
+        let start = parseInt(bar.style.width) || 0;
+        let end = phase.p;
+
+        for (let i = start; i <= end; i++) {
+            bar.style.width = i + '%';
+            await new Promise(r => setTimeout(r, 15 + Math.random() * 20));
+        }
+        await new Promise(r => setTimeout(r, 400));
+    }
+
+    termuxDownloaded = true;
+    box.classList.remove('downloading');
+    box.classList.add('completed');
+    status.textContent = 'READY TO INSTALL';
+    status.style.color = 'var(--gr)';
+
+    if (nextBtn) {
+        nextBtn.disabled = false;
+        nextBtn.innerHTML = 'Next →';
+        nextBtn.style.opacity = '1';
+        nextBtn.classList.add('pulse-gold');
+    }
+};
+
 // ─── Android Guide ─────────────────────────────────────
 const ANDROID_STEPS = [
     {
         title: 'Step 1 — Install Termux',
         content: `
-      <p style="margin-bottom:16px">Termux is a free terminal app for Android. Download it from the official source:</p>
-      <a class="btn btn-gold" style="display:inline-flex;margin-bottom:16px" href="https://f-droid.org/en/packages/com.termux/" target="_blank">
-        📥 Download Termux from F-Droid
-      </a>
+      <p style="margin-bottom:16px">Termux is a free terminal app for Android. Download it directly from the GitHub source:</p>
+      
+      <div class="download-box" id="termux-download-box">
+        <div class="download-success-icon">✔</div>
+        <div class="download-btn-content">
+          <button class="btn btn-gold" style="width:100%" onclick="startAndroidDownload()">
+            📥 Download Termux from GitHub
+          </button>
+        </div>
+        <div class="progress-container">
+          <div class="progress-bar" id="termux-progress-bar"></div>
+        </div>
+        <div class="download-status" id="termux-download-status">INITIALIZING...</div>
+      </div>
+
       <div class="alert alert-info show" style="margin:0">
-        ⚠ Do <strong>not</strong> install Termux from the Play Store — it's outdated. Use F-Droid only.
+        ⚠ <strong>Important</strong>: Do not use the Play Store version. The GitHub version is the ONLY one that supports JARVIS.
       </div>
     `,
         action: 'Next →',
@@ -277,9 +344,19 @@ const renderAndroidStep = () => {
     <h2 style="margin-bottom:16px">${step.title}</h2>
     ${step.content}
     ${step.action
-            ? `<button class="btn btn-primary btn-block" style="margin-top:24px" onclick="nextAndroidStep()">${step.action}</button>`
+            ? `<button class="btn btn-primary btn-block" id="btn-android-next" style="margin-top:24px" onclick="nextAndroidStep()">${step.action}</button>`
             : ''}
   `;
+
+    // Step 1: Lock Next button until download is complete
+    if (androidStep === 0 && !termuxDownloaded) {
+        const nextBtn = document.getElementById('btn-android-next');
+        if (nextBtn) {
+            nextBtn.disabled = true;
+            nextBtn.innerHTML = '📥 Complete Download First';
+            nextBtn.style.opacity = '0.5';
+        }
+    }
 
     // Generate QR if step 2
     if (androidStep === 1) {
