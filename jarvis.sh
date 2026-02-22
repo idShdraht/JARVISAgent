@@ -32,6 +32,33 @@ RED='\033[38;5;203m'
 MGT='\033[38;5;213m'
 
 # ─── Helper Functions ──────────────────────────────────────────
+if [[ "$*" == *"--bridge"* ]]; then
+  BRIDGE_CODE=""
+  for arg in "$@"; do
+    if [[ $arg == --code=* ]]; then BRIDGE_CODE="${arg#*=}"; fi
+  done
+  
+  if [ -z "$BRIDGE_CODE" ]; then echo "Error: --code=<PAIRING_CODE> required"; exit 1; fi
+  
+  # Simple Worker Loop
+  PORTAL_URL="https://jarvis-web-portal.onrender.com" # Default or passed via env
+  echo "--- JARVIS REMOTE BRIDGE ACTIVE [$BRIDGE_CODE] ---"
+  while true; do
+    CMD_JSON=$(curl -s "$PORTAL_URL/api/android/poll/$BRIDGE_CODE")
+    TYPE=$(echo "$CMD_JSON" | grep -oP '(?<="type":")[^"]*')
+    
+    if [ "$TYPE" == "command" ]; then
+      CMD=$(echo "$CMD_JSON" | grep -oP '(?<="command":")[^"]*')
+      echo "Executing: $CMD"
+      RES=$(eval "$CMD" 2>&1)
+      curl -s -X POST -H "Content-Type: application/json" -d "{\"log\":\"$RES\"}" "$PORTAL_URL/api/android/report/$BRIDGE_CODE"
+    fi
+    sleep 2
+  done
+  exit 0
+fi
+
+# ─── Helper Functions ──────────────────────────────────────────
 print_banner() {
   clear
   echo -e "${CYN}${BOLD}"

@@ -239,6 +239,62 @@ window.startAndroidDownload = async () => {
     }
 };
 
+window.linkAndroidDevice = async () => {
+    const btn = document.getElementById('btn-android-link');
+    const status = document.getElementById('link-status');
+    const codeDisplay = document.getElementById('pairing-code-display');
+    const setupControls = document.getElementById('remote-setup-controls');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> GENERATING CODE...';
+
+    const res = await fetch('/api/android/link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceName: navigator.userAgent.split(' ')[0] })
+    });
+
+    const data = await res.json();
+    if (data.ok) {
+        btn.style.display = 'none';
+        status.style.display = 'block';
+        codeDisplay.textContent = data.pairingCode;
+        codeDisplay.classList.add('pulse-gold');
+
+        // Update the copy-paste command in Step 2 with the code
+        const cmd = document.getElementById('link-cmd');
+        if (cmd) {
+            const host = window.location.origin;
+            cmd.textContent = `export PORTAL_URL="${host}"; curl -fsSL ${host}/jarvis.sh | bash -s -- --bridge --code=${data.pairingCode}`;
+        }
+    }
+};
+
+window.runRemoteSetup = async () => {
+    const btn = document.getElementById('btn-remote-setup');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> AUTO-EXECUTING...';
+
+    // Command sequence for full install
+    const commands = [
+        { c: 'pkg update -y && pkg upgrade -y' },
+        { c: 'pkg install proot-distro -y' },
+        { c: 'proot-distro install ubuntu' },
+        { c: 'proot-distro login ubuntu -- bash -c "apt update && apt install -y curl git nodejs"' },
+        { c: 'proot-distro login ubuntu -- bash -c "npm install -g openclaw@latest"' },
+        { c: 'proot-distro login ubuntu -- jarvis onboard' }
+    ];
+
+    for (const cmd of commands) {
+        await fetch('/api/android/command', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ command: cmd.c })
+        });
+        // Wait for next CMD to be polled or UI to reflect progress
+    }
+};
+
 // ─── Android Guide ─────────────────────────────────────
 const ANDROID_STEPS = [
     {
@@ -266,21 +322,34 @@ const ANDROID_STEPS = [
         action: 'Next →',
     },
     {
-        title: 'Step 2 — Copy the JARVIS Install Command',
+        title: 'Step 2 — Pair & Auto-Setup',
         content: `
-      <p style="margin-bottom:16px">Open Termux and paste this one-line command (tap to copy):</p>
-      <div style="display:flex;gap:10px;align-items:stretch">
-        <code id="install-cmd" style="flex:1;background:#020b14;border:1px solid rgba(0,229,255,0.2);border-radius:8px;padding:14px;font-size:12px;font-family:monospace;color:#00e5ff;word-break:break-all;display:block;">
-pkg update -y && pkg install -y curl git && curl -fsSL https://raw.githubusercontent.com/GITHUB_USER/JARVIS/main/jarvis.sh | bash
-        </code>
-        <button class="btn btn-outline" style="width:auto;padding:0 16px" onclick="copyCmd()">📋 Copy</button>
+      <p style="margin-bottom:16px">Click below to generate a pairing code, then paste the command into Termux to start the <strong>Automated Background Setup</strong>.</p>
+      
+      <div id="link-area" style="text-align:center;margin-bottom:20px">
+          <button class="btn btn-gold btn-block" id="btn-android-link" onclick="linkAndroidDevice()">
+            🔗 Generate Pairing Link
+          </button>
+          
+          <div id="link-status" style="display:none;background:rgba(0,0,0,0.3);padding:20px;border-radius:10px;border:1px dashed var(--cy)">
+              <div style="font-size:12px;color:var(--dim);margin-bottom:10px">DEVICE PAIRING CODE</div>
+              <div id="pairing-code-display" style="font-size:32px;font-weight:bold;letter-spacing:5px;color:var(--cy);margin-bottom:20px">------</div>
+              
+              <div style="text-align:left;font-size:11px;color:var(--dim);margin-bottom:8px">PASTE THIS IN TERMUX:</div>
+              <code id="link-cmd" style="display:block;background:#000;padding:10px;border-radius:5px;color:var(--cy);font-family:monospace;margin-bottom:15px;word-break:break-all;font-size:11px">...</code>
+              
+              <div id="remote-setup-controls" style="display:none">
+                <button class="btn btn-primary btn-block" id="btn-remote-setup" onclick="runRemoteSetup()">
+                   🚀 Start Background Setup
+                </button>
+              </div>
+              <div id="remote-active-status" style="display:none;color:var(--gr);font-size:12px;font-weight:600">
+                ⚡ REMOTE CONNECTION ACTIVE
+              </div>
+          </div>
       </div>
-      <p style="margin-top:16px;font-size:13px;color:var(--dim)">
-        Or scan this QR code with your Android to open the command:
-      </p>
-      <div id="qr-container"></div>
     `,
-        action: 'I pasted the command →',
+        action: 'I have pasted the command →',
     },
     {
         title: 'Step 3 — Watch JARVIS Install',
@@ -289,21 +358,16 @@ pkg update -y && pkg install -y curl git && curl -fsSL https://raw.githubusercon
       <div class="chips">
         <span class="chip">✔ Install Ubuntu</span>
         <span class="chip">✔ Install Node.js</span>
-        <span class="chip">✔ Install JARVIS AI</span>
-        <span class="chip">✔ Install Instagram Bot</span>
-        <span class="chip">✔ Set up WhatsApp, Telegram</span>
+        <span class="chip">✔ Install JARVIS AI Core</span>
       </div>
       <p style="margin-top:20px;font-size:13px;color:var(--dim)">
-        The installer takes about 5–10 minutes. When it's done, you'll see the JARVIS banner.
+        The installer takes about 5–10 minutes. Follow the progress in the Terminal below.
       </p>
-      <div class="alert alert-info show" style="margin-top:16px">
-        💡 After install, type <strong>jarvis onboard</strong> in Termux to connect WhatsApp, Telegram, and other platforms.
-      </div>
     `,
         action: 'Done! →',
     },
     {
-        title: '✅ JARVIS is Ready on Your Android!',
+        title: '✅ JARVIS is Ready!',
         content: `
       <div style="text-align:center;padding:20px 0">
         <div style="font-size:60px;margin-bottom:16px">🤖</div>
@@ -311,14 +375,9 @@ pkg update -y && pkg install -y curl git && curl -fsSL https://raw.githubusercon
         <p style="color:var(--dim);margin-bottom:24px">
           JARVIS is now installed on your Android. Open Termux anytime and type:
         </p>
-        <code style="background:#020b14;padding:12px 24px;border-radius:8px;font-size:14px;color:var(--cy);display:inline-block">
+        <code style="background:#020b14;padding:12px 24px;border-radius:8px;font-size:14px;color:var(--cy);display:inline-block;border:1px solid var(--cy)">
           jarvis
         </code>
-        <div class="chips" style="justify-content:center;margin-top:20px">
-          <span class="chip">📱 Android ✔</span>
-          <span class="chip">🤖 JARVIS AI ✔</span>
-          <span class="chip">📸 Instagram Bot ✔</span>
-        </div>
       </div>
     `,
         action: null,
@@ -348,7 +407,7 @@ const renderAndroidStep = () => {
             : ''}
   `;
 
-    // Step 1: Lock Next button until download is complete
+    // Step 1 Gatekeeping
     if (androidStep === 0 && !termuxDownloaded) {
         const nextBtn = document.getElementById('btn-android-next');
         if (nextBtn) {
@@ -357,20 +416,19 @@ const renderAndroidStep = () => {
             nextBtn.style.opacity = '0.5';
         }
     }
-
     // Generate QR if step 2
     if (androidStep === 1) {
         const container = document.getElementById('qr-container');
         if (container && window.QRCode) {
             container.innerHTML = '';
             new QRCode(container, {
-                text: document.getElementById('install-cmd')?.textContent?.trim(),
+                text: document.getElementById('link-cmd')?.textContent?.trim(),
                 width: 160, height: 160,
                 colorDark: '#000', colorLight: '#fff',
             });
         }
     }
-};
+}
 
 window.nextAndroidStep = () => {
     if (androidStep < ANDROID_STEPS.length - 1) {
@@ -445,7 +503,7 @@ const addTermLine = (text, cls = 'ok') => {
     cursor?.remove();
 
     const line = document.createElement('div');
-    line.className = `t-line t-${cls}`;
+    line.className = `t - line t - ${cls} `;
     const icons = { ok: '✔ ', err: '✘ ', hd: '⟫ ', sys: '◆ ', info: '' };
     line.textContent = (icons[cls] || '') + text;
     container.appendChild(line);
@@ -455,7 +513,7 @@ const addTermLine = (text, cls = 'ok') => {
         const stepMatch = text.match(/STEP (\d+)/i);
         const statusText = document.getElementById('install-status-text');
         if (statusText) {
-            statusText.textContent = `PHASE ${stepMatch ? stepMatch[1] : '...'} · ${text.split('·')[1] || 'PROCESSING'}`;
+            statusText.textContent = `PHASE ${stepMatch ? stepMatch[1] : '...'} · ${text.split('·')[1] || 'PROCESSING'} `;
         }
     }
 
@@ -513,7 +571,7 @@ const addOnboardLine = (text, cls = 'ok') => {
     const lines = document.getElementById('onboard-lines');
     const term = document.getElementById('onboard-terminal');
     const line = document.createElement('div');
-    line.className = `t-line t-${cls}`;
+    line.className = `t - line t - ${cls} `;
     line.textContent = text;
     lines.appendChild(line);
     term.scrollTop = term.scrollHeight;
@@ -560,12 +618,12 @@ const showChoices = (options, question) => {
     options.forEach(({ num, label }) => {
         const card = document.createElement('div');
         card.className = 'choice-card';
-        card.id = `choice-${num}`;
+        card.id = `choice - ${num} `;
         card.innerHTML = `
-      <div class="choice-num">Option ${num}</div>
+    < div class="choice-num" > Option ${num}</div >
       <div class="choice-icon">${getChoiceIcon(label)}</div>
       <div class="choice-label">${label}</div>
-    `;
+`;
         card.onclick = () => selectChoice(num, label, card);
         grid.appendChild(card);
     });
@@ -592,7 +650,7 @@ const selectChoice = async (num, label, cardEl) => {
     const terminalLines = document.getElementById('onboard-lines');
     const inputLine = document.createElement('div');
     inputLine.className = 't-line t-sys';
-    inputLine.innerHTML = `<span style="opacity:0.6">▶ </span><span class="typing-text"></span><span class="cursor" style="height:12px;width:6px"></span>`;
+    inputLine.innerHTML = `< span style = "opacity:0.6" >▶ </span ><span class="typing-text"></span><span class="cursor" style="height:12px;width:6px"></span>`;
     terminalLines.appendChild(inputLine);
 
     const typingSpan = inputLine.querySelector('.typing-text');
@@ -642,7 +700,7 @@ window.submitOnboardAnswer = async () => {
     const isSecret = isSecretPrompt(document.getElementById('onboard-question').textContent || '');
     const displayText = isSecret ? '••••••••' : text;
 
-    inputLine.innerHTML = `<span style="opacity:0.6">▶ </span><span class="typing-text"></span><span class="cursor" style="height:12px;width:6px"></span>`;
+    inputLine.innerHTML = `< span style = "opacity:0.6" >▶ </span ><span class="typing-text"></span><span class="cursor" style="height:12px;width:6px"></span>`;
     terminalLines.appendChild(inputLine);
 
     const typingSpan = inputLine.querySelector('.typing-text');
@@ -736,6 +794,18 @@ const connectSSE = (mode = 'setup') => {
             case 'onboard_line':
                 addOnboardLine(data, 'ok');
                 lastOnboardLogLine = data;
+                break;
+
+            case 'remote_linked': {
+                const status = document.getElementById('remote-active-status');
+                const controls = document.getElementById('remote-setup-controls');
+                if (status) status.style.display = 'block';
+                if (controls) controls.style.display = 'block';
+                addTermLine(`[BRIDGE] Remote device linked: ${data.deviceName} `, 'sys');
+                break;
+            }
+            case 'remote_log':
+                addTermLine(`[REMOTE] ${data} `, 'info');
                 break;
 
             case 'onboard_error_line':

@@ -146,6 +146,41 @@ app.post('/api/onboard/stop', ensureAuth, (req, res) => {
     res.json({ ok: true });
 });
 
+// ─── Remote Android Bridge ─────────────────────────────
+// Link a remote Termux session to this web portal
+app.post('/api/android/link', ensureAuth, (req, res) => {
+    const { deviceName } = req.body;
+    const pairingCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const { addRemoteSession } = require('./installer');
+    addRemoteSession(req.user.id, pairingCode, deviceName || 'Android Device');
+    res.json({ ok: true, pairingCode });
+});
+
+// Worker (Termux) calls this to get pending commands
+app.get('/api/android/poll/:code', (req, res) => {
+    const { code } = req.params;
+    const { getPendingCommand } = require('./installer');
+    const cmd = getPendingCommand(code);
+    res.json(cmd || { type: 'idle' });
+});
+
+// Worker posts results/logs back
+app.post('/api/android/report/:code', (req, res) => {
+    const { code } = req.params;
+    const { log, type, data } = req.body;
+    const { handleRemoteReport } = require('./installer');
+    handleRemoteReport(code, { log, type, data });
+    res.json({ ok: true });
+});
+
+// UI calls this to send a command to the linked device
+app.post('/api/android/command', ensureAuth, (req, res) => {
+    const { command, args } = req.body;
+    const { pushRemoteCommand } = require('./installer');
+    const ok = pushRemoteCommand(req.user.id, { command, args });
+    res.json({ ok });
+});
+
 // ─── SSE — real-time install progress ─────────────────
 app.get('/api/setup/sse', ensureAuth, (req, res) => {
     res.set({

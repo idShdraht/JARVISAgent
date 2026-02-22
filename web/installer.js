@@ -352,8 +352,50 @@ const ensureWindowsScript = () => {
     fs.writeFileSync(dest, script);
 };
 
+// ═══════════════════════════════════════════════════════
+//  REMOTE ANDROID BRIDGE (MASTER/WORKER)
+// ═══════════════════════════════════════════════════════
+const remoteSessions = new Map(); // pairingCode -> { userId, deviceName, queue: [], lastActive: Date }
+const userToCode = new Map();     // userId -> pairingCode
+
+const addRemoteSession = (userId, code, deviceName) => {
+    remoteSessions.set(code, { userId, deviceName, queue: [], lastActive: Date.now() });
+    userToCode.set(userId, code);
+    sendSSE(userId, 'remote_linked', { code, deviceName });
+};
+
+const getPendingCommand = (code) => {
+    const session = remoteSessions.get(code);
+    if (!session) return null;
+    session.lastActive = Date.now();
+    return session.queue.shift() || null;
+};
+
+const pushRemoteCommand = (userId, payload) => {
+    const code = userToCode.get(userId);
+    const session = remoteSessions.get(code);
+    if (!session) return false;
+    session.queue.push(payload);
+    return true;
+};
+
+const handleRemoteReport = (code, report) => {
+    const session = remoteSessions.get(code);
+    if (!session) return;
+    session.lastActive = Date.now();
+    const { userId } = session;
+
+    if (report.log) {
+        sendSSE(userId, 'remote_log', report.log);
+    }
+    if (report.type) {
+        sendSSE(userId, 'remote_' + report.type, report.data);
+    }
+};
+
 module.exports = {
     addSSEClient, removeSSEClient, sendSSE,
     runInstaller, getPlatform, ensureWindowsScript,
     runOnboard, sendOnboardInput, stopOnboard,
+    addRemoteSession, getPendingCommand, pushRemoteCommand, handleRemoteReport
 };
