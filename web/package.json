@@ -1,0 +1,25 @@
+{
+    "name": "jarvis-web",
+    "version": "1.0.0",
+    "description": "JARVIS Setup Portal — Developed by Balaraman",
+    "type": "commonjs",
+    "main": "server.js",
+    "scripts": {
+        "build": "echo 'Building JARVIS Web Portal... Success.'",
+        "start": "node server.js",
+        "dev": "node --watch server.js"
+    },
+    "dependencies": {
+        "express": "^4.19.2",
+        "express-session": "^1.18.0",
+        "passport": "^0.7.0",
+        "passport-google-oauth20": "^2.0.0",
+        "bcryptjs": "^2.4.3",
+        "mysql2": "^3.11.3",
+        "dotenv": "^16.4.5",
+        "qrcode": "^1.5.4"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}

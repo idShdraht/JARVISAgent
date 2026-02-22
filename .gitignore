@@ -1,0 +1,8 @@
+node_modules/
+.jarvis_env
+web/node_modules/
+web/.env
+.env
+*.log
+.DS_Store
+Thumbs.db
