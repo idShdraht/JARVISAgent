@@ -71,8 +71,21 @@ const populateDashboard = () => {
     fetch('/api/platform').then(r => r.json()).then(({ platform }) => {
         const map = { windows: 'windows', linux: 'linux', darwin: 'linux' };
         const detected = map[platform] || 'linux';
-        // Don't auto-select, just highlight
-        document.getElementById(`card-${detected}`)?.style.setProperty('border-color', 'var(--cy2)');
+
+        // Highly visible highlighting for the detected platform
+        const card = document.getElementById(`card-${detected}`);
+        if (card) {
+            card.style.borderColor = 'var(--cy2)';
+            card.style.boxShadow = '0 0 20px rgba(0, 243, 255, 0.2)';
+        }
+
+        // AUTO-PILOT: If setup is not done, jump straight to the guide after a short delay
+        if (!currentUser.setupDone) {
+            setTimeout(() => {
+                if (detected === 'windows') window.startPCGuide();
+                else startAndroidGuide();
+            }, 1000);
+        }
     });
 };
 
@@ -333,6 +346,8 @@ window.runRemoteSetup = async () => {
 };
 
 // ─── Android Guide ─────────────────────────────────────
+let pairingPoller = null;
+
 const ANDROID_STEPS = [
     {
         title: 'Step 1 — Install Termux',
@@ -364,19 +379,15 @@ const ANDROID_STEPS = [
     {
         title: 'Step 2 — Pair & Auto-Setup',
         content: `
-      <p style="margin-bottom:16px">Click below to generate a pairing code, then paste the command into Termux to start the <strong>Automated Background Setup</strong>.</p>
+      <p style="margin-bottom:16px">Pairing code generated. Paste the command into Termux to start the <strong>Automated Background Setup</strong>.</p>
       
       <div id="link-area" style="text-align:center;margin-bottom:20px">
-          <button class="btn btn-gold btn-block" id="btn-android-link" onclick="linkAndroidDevice()">
-            🔗 Generate Pairing Link
-          </button>
-          
-          <div id="link-status" style="display:none;background:rgba(0,0,0,0.3);padding:20px;border-radius:10px;border:1px dashed var(--cy)">
+          <div id="link-status" style="background:rgba(0,0,0,0.3);padding:20px;border-radius:10px;border:1px dashed var(--cy)">
               <div style="font-size:12px;color:var(--dim);margin-bottom:10px">DEVICE PAIRING CODE</div>
               <div id="pairing-code-display" style="font-size:32px;font-weight:bold;letter-spacing:5px;color:var(--cy);margin-bottom:20px">------</div>
               
               <div style="text-align:left;font-size:11px;color:var(--dim);margin-bottom:8px">PASTE THIS IN TERMUX:</div>
-              <code id="link-cmd" style="display:block;background:#000;padding:10px;border-radius:5px;color:var(--cy);font-family:monospace;margin-bottom:15px;word-break:break-all;font-size:11px">...</code>
+              <code id="link-cmd" style="display:block;background:#000;padding:10px;border-radius:5px;color:var(--cy);font-family:monospace;margin-bottom:15px;word-break:break-all;font-size:11px">--- GENERATING ---</code>
               
               <div id="remote-setup-controls" style="display:none">
                 <button class="btn btn-primary btn-block" id="btn-remote-setup" onclick="runRemoteSetup()">
@@ -384,27 +395,35 @@ const ANDROID_STEPS = [
                 </button>
               </div>
               <div id="remote-active-status" style="display:none;color:var(--gr);font-size:12px;font-weight:600">
-                ⚡ REMOTE CONNECTION ACTIVE
+                ⚡ REMOTE CONNECTION ACTIVE — AUTONOMOUS TRANSITION IN PROGRESS
               </div>
           </div>
       </div>
     `,
-        action: 'I have pasted the command →',
+        action: 'Waiting for device... →',
+        onEnter: () => {
+            // Auto-trigger pairing and polling
+            linkAndroidDevice();
+        }
     },
     {
         title: 'Step 3 — Watch JARVIS Install',
         content: `
-      <p style="margin-bottom:16px">The installer will run automatically in Termux. It will:</p>
+      <p style="margin-bottom:16px">The installer is running automatically. Follow the progress in the Terminal below.</p>
       <div class="chips">
-        <span class="chip">✔ Install Ubuntu</span>
-        <span class="chip">✔ Install Node.js</span>
-        <span class="chip">✔ Install JARVIS AI Core</span>
+        <span class="chip">✔ Ubuntu</span>
+        <span class="chip">✔ Node.js</span>
+        <span class="chip">✔ JARVIS AI</span>
       </div>
       <p style="margin-top:20px;font-size:13px;color:var(--dim)">
-        The installer takes about 5–10 minutes. Follow the progress in the Terminal below.
+        Running silently in the background. Take a coffee — we'll notify you when done.
       </p>
     `,
         action: 'Done! →',
+        onEnter: () => {
+            // Auto-trigger command setup if linked
+            runRemoteSetup();
+        }
     },
     {
         title: '✅ JARVIS is Ready!',
@@ -413,7 +432,7 @@ const ANDROID_STEPS = [
         <div style="font-size:60px;margin-bottom:16px">🤖</div>
         <h2 style="font-size:22px;margin-bottom:12px">Setup Complete!</h2>
         <p style="color:var(--dim);margin-bottom:24px">
-          JARVIS is now installed on your Android. Open Termux anytime and type:
+          JARVIS is now active. Launch it anytime in Termux:
         </p>
         <code style="background:#020b14;padding:12px 24px;border-radius:8px;font-size:14px;color:var(--cy);display:inline-block;border:1px solid var(--cy)">
           jarvis
@@ -425,57 +444,61 @@ const ANDROID_STEPS = [
 ];
 
 let androidStep = 0;
-const startAndroidGuide = () => { androidStep = 0; renderAndroidStep(); };
+
+window.nextAndroidStep = () => {
+    androidStep++;
+    renderAndroidStep();
+};
 
 const renderAndroidStep = () => {
     const step = ANDROID_STEPS[androidStep];
+    if (!step) return;
+
+    // Mission Status Update
+    const missionBar = document.getElementById('mission-status');
+    const missionState = document.getElementById('mission-state');
+    if (missionBar && missionState) {
+        missionBar.style.display = 'flex';
+        missionState.textContent = step.title.split('—')[1]?.trim() || step.title;
+        if (androidStep === 3) {
+            document.getElementById('mission-blink').classList.remove('pulse-gold');
+            document.getElementById('mission-blink').style.background = 'var(--gr)';
+            missionState.textContent = 'MISSION COMPLETE';
+        }
+    }
+
+    // Reset wizard UI
+    for (let i = 1; i <= 4; i++) {
+        const el = document.getElementById(`astep-${i}`);
+        if (el) {
+            el.classList.toggle('active', i === androidStep + 1);
+            el.classList.toggle('completed', i < androidStep + 1);
+        }
+    }
+
     const content = document.getElementById('android-step-content');
-    const steps = ['astep-1', 'astep-2', 'astep-3', 'astep-4'];
-
-    steps.forEach((id, i) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.classList.toggle('done', i < androidStep);
-        el.classList.toggle('active', i === androidStep);
-    });
-
     content.innerHTML = `
-    <h2 style="margin-bottom:16px">${step.title}</h2>
+    <h3 style="margin-bottom:12px">${step.title}</h3>
     ${step.content}
-    ${step.action
-            ? `<button class="btn btn-primary btn-block" id="btn-android-next" style="margin-top:24px" onclick="nextAndroidStep()">${step.action}</button>`
-            : ''}
+    ${step.action ? `
+      <div style="margin-top:24px;display:flex;justify-content:flex-end">
+        <button class="btn btn-primary" id="btn-android-next" onclick="nextAndroidStep()" ${androidStep === 0 && !termuxDownloaded ? 'disabled style="opacity:0.5"' : ''}>
+          ${step.action}
+        </button>
+      </div>
+    ` : ''}
   `;
 
-    // Step 1 Gatekeeping
-    if (androidStep === 0 && !termuxDownloaded) {
-        const nextBtn = document.getElementById('btn-android-next');
-        if (nextBtn) {
-            nextBtn.disabled = true;
-            nextBtn.innerHTML = '📥 Complete Download First';
-            nextBtn.style.opacity = '0.5';
-        }
-    }
-    // Generate QR if step 2
-    if (androidStep === 1) {
-        const container = document.getElementById('qr-container');
-        if (container && window.QRCode) {
-            container.innerHTML = '';
-            new QRCode(container, {
-                text: document.getElementById('link-cmd')?.textContent?.trim(),
-                width: 160, height: 160,
-                colorDark: '#000', colorLight: '#fff',
-            });
-        }
-    }
-}
+    // Trigger auto-steps if any
+    if (step.onEnter) step.onEnter();
 
-window.nextAndroidStep = () => {
-    if (androidStep < ANDROID_STEPS.length - 1) {
-        androidStep++;
-        renderAndroidStep();
-        if (androidStep === 3) markSetupDone('android');
-    }
+    // Mark setup done if we reached the end
+    if (androidStep === 3) markSetupDone('android');
+};
+
+window.startAndroidGuide = () => {
+    androidStep = 0;
+    renderAndroidStep();
 };
 
 window.copyCmd = () => {

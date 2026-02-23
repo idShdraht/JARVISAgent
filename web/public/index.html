@@ -138,6 +138,19 @@
               <div id="guide-android" class="platform-guide" style="display:none">
                 <h2>📱 Android Setup Guide</h2>
                 <p class="subtitle">Follow these simple steps — no technical knowledge needed!</p>
+                <div
+                  style="font-size:10px;color:var(--cy);margin-bottom:15px;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:8px">
+                  <span
+                    style="display:inline-block;width:6px;height:6px;background:var(--cy);border-radius:50%;box-shadow:0 0 5px var(--cy)"></span>
+                  Autonomous Mode Active
+                </div>
+
+                <div class="mission-status-bar" id="mission-status"
+                  style="display:none;margin-bottom:20px;padding:12px;background:rgba(0, 243, 255, 0.1);border:1px solid var(--cy);border-radius:8px;font-size:12px;display:flex;align-items:center;justify-content:space-between">
+                  <span>🛰️ MISSION STATUS: <strong id="mission-state">AWAITING DEPLOYMENT</strong></span>
+                  <span class="pulse-gold" id="mission-blink"
+                    style="width:10px;height:10px;border-radius:50%;background:var(--cy)"></span>
+                </div>
 
                 <div class="wizard-steps">
                   <div class="step-item active" id="astep-1">

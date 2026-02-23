@@ -64,18 +64,37 @@ app.get('/api/me', ensureAuth, (req, res) => {
     });
 });
 
+// Check system status (DB mode, etc.)
+app.get('/api/status', (req, res) => {
+    res.json({
+        ok: true,
+        dbMode: db.isLocalMode() ? 'local' : 'cloud',
+        version: '1.2.0-autonomous'
+    });
+});
+
 // Set password (first login after Google OAuth)
 app.post('/api/set-password', ensureAuth, async (req, res) => {
     try {
+        // SECURITY: Don't allow overwriting an existing password
+        if (req.user.password_hash) {
+            return res.status(400).json({ error: 'Password already set. Use shift + refresh if you need to reset.' });
+        }
+
         const { password } = req.body;
         if (!password || password.length < 6)
             return res.status(400).json({ error: 'Password must be at least 6 characters' });
+
         const hash = await hashPassword(password);
         await db.setPassword(req.user.id, hash);
-        // Reload user in session
-        req.user.password_hash = hash;
-        await db.logSession(req.user.id, 'set_password', 'Password created', 'web');
-        res.json({ ok: true });
+
+        // Reload user from DB to ensure session is perfectly in sync
+        const updatedUser = await db.findUserById(req.user.id);
+        req.login(updatedUser, (err) => {
+            if (err) return res.status(500).json({ error: 'Session refresh failed' });
+            db.logSession(req.user.id, 'set_password', 'Password created', 'web');
+            res.json({ ok: true });
+        });
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: 'Server error' });
