@@ -463,6 +463,7 @@ const renderAndroidStep = () => {
 };
 
 window.startAndroidGuide = () => {
+    selectedPlatform = 'android';
     androidStep = 0;
     renderAndroidStep();
 };
@@ -536,7 +537,7 @@ const addTermLine = (text, cls = 'ok') => {
     cursor?.remove();
 
     const line = document.createElement('div');
-    line.className = `t - line t - ${cls} `;
+    line.className = `t-line t-${cls}`;
     const icons = { ok: '✔ ', err: '✘ ', hd: '⟫ ', sys: '◆ ', info: '' };
     line.textContent = (icons[cls] || '') + text;
     container.appendChild(line);
@@ -563,7 +564,7 @@ const addAndroidTermLine = (text, cls = 'ok') => {
     if (!container) return;
 
     const line = document.createElement('div');
-    line.className = `t - line t - ${cls} `;
+    line.className = `t-line t-${cls}`;
     const icons = { ok: '✔ ', err: '✘ ', hd: '⟫ ', sys: '◆ ', info: '' };
     line.textContent = (icons[cls] || '') + text;
     container.appendChild(line);
