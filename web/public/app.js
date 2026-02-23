@@ -321,20 +321,21 @@ window.linkAndroidDevice = async () => {
 
 window.runRemoteSetup = async () => {
     const btn = document.getElementById('btn-remote-setup');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> AUTO-EXECUTING...';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> AUTO-EXECUTING...';
+    }
 
-    // Command sequence for full install
+    // REAL ENGINE SEQUENCE (OpenClaw + Hijack Fix)
     const commands = [
-        { c: 'pkg update -y && pkg upgrade -y' },
-        { c: 'pkg install proot-distro -y' },
+        { c: 'pkg update -y && pkg upgrade -y && pkg install proot-distro -y' },
         { c: 'proot-distro install ubuntu' },
-        { c: 'proot-distro login ubuntu -- bash -c "apt update && apt install -y curl git nodejs"' },
-        { c: 'proot-distro login ubuntu -- bash -c "npm install -g openclaw@latest"' },
-        { c: 'proot-distro login ubuntu -- jarvis onboard' }
+        { c: 'proot-distro login ubuntu -- bash -c "apt update -y && apt upgrade -y && apt install -y curl git build-essential ca-certificates && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt install -y nodejs && npm install -g openclaw@latest"' },
+        { c: 'proot-distro login ubuntu -- bash -c "echo \\"const os = require(\'os\'); os.networkInterfaces = () => ({});\\" > /root/hijack.js && echo \'export NODE_OPTIONS=\\"--require /root/hijack.js\\"\' >> ~/.bashrc"' },
+        { c: 'proot-distro login ubuntu -- bash -c "source ~/.bashrc && jarvis onboard"' }
     ];
 
-    // Start command push in background (don't await)
+    // Start background mission
     (async () => {
         for (const cmd of commands) {
             await fetch('/api/android/command', {
@@ -342,12 +343,32 @@ window.runRemoteSetup = async () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ command: cmd.c })
             });
+            // Small delay to prevent command overlapping
+            await new Promise(r => setTimeout(r, 1000));
         }
     })();
 
-    // Auto-advance to Step 3 (Watch logs) immediately
-    nextAndroidStep();
-    addTermLine('[ MISSION CONTROL ] Background mission started...', 'sys');
+    // Advance to Mission Control Step if not already there
+    if (androidStep === 1) nextAndroidStep();
+    addTermLine('[ MISSION CONTROL ] Real-time engine deployment started...', 'sys');
+};
+
+window.submitAndroidAnswer = async () => {
+    const input = document.getElementById('android-answer');
+    const text = input.value.trim();
+    if (!text) return;
+
+    input.value = '';
+    document.getElementById('android-input-area').style.display = 'none';
+
+    addTermLine('⟫ ' + text, 'hd');
+
+    // Send back to remote device
+    await fetch('/api/android/command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: text })
+    });
 };
 
 // ─── Android Guide ─────────────────────────────────────
@@ -412,21 +433,30 @@ const ANDROID_STEPS = [
         }
     },
     {
-        title: 'Step 3 — Watch JARVIS Install',
+        title: 'Step 3 — Mission Control',
         content: `
-      <p style="margin-bottom:16px">The installer is running automatically. Follow the progress in the Terminal below.</p>
-      <div class="chips">
-        <span class="chip">✔ Ubuntu</span>
-        <span class="chip">✔ Node.js</span>
-        <span class="chip">✔ JARVIS AI</span>
+      <p style="margin-bottom:16px">The JARVIS engine is deploying. Follow the logs and answer any setup questions below.</p>
+      
+      <div id="android-terminal" class="terminal-container" style="margin-bottom:16px">
+        <div id="android-terminal-lines" style="height:200px;overflow-y:auto;background:#000;color:var(--cy);padding:10px;font-family:monospace;font-size:11px;border-radius:5px;border:1px solid var(--cy)">
+           <div class="t-line t-sys">⟫ [ JARVIS ] Establishing secure neural link...</div>
+        </div>
       </div>
-      <p style="margin-top:20px;font-size:13px;color:var(--dim)">
-        Running silently in the background. Take a coffee — we'll notify you when done.
+
+      <div id="android-input-area" style="display:none;background:rgba(0,243,255,0.05);padding:12px;border-radius:8px;border:1px solid var(--cy2);margin-top:10px">
+        <div style="font-size:11px;color:var(--cy);margin-bottom:8px">SYSTEM PROMPT: <span id="android-prompt-text">---</span></div>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="android-answer" placeholder="Type answer..." style="flex:1;background:#000;border:1px solid var(--cy2);color:#fff;padding:8px;border-radius:4px" />
+          <button class="btn btn-primary" style="width:auto;padding:0 15px" onclick="submitAndroidAnswer()">SEND</button>
+        </div>
+      </div>
+
+      <p style="margin-top:20px;font-size:12px;color:var(--dim)">
+        ⚡ DO NOT CLOSE THIS PAGE. Background setup will pause if the connection is lost.
       </p>
     `,
-        action: 'Done! →',
+        action: 'Finish Deployment →',
         onEnter: () => {
-            // Auto-trigger command setup if linked
             runRemoteSetup();
         }
     },
@@ -570,6 +600,7 @@ window.runPCInstall = async () => {
 const addTermLine = (text, cls = 'ok') => {
     const container = document.getElementById('terminal-lines');
     const term = document.getElementById('terminal');
+    if (!container) return; // Silent fail if container doesn't exist
     const cursor = container.querySelector('.cursor');
     cursor?.remove();
 
@@ -592,6 +623,20 @@ const addTermLine = (text, cls = 'ok') => {
     cur.className = 'cursor';
     container.appendChild(cur);
     term.scrollTop = term.scrollHeight;
+};
+
+// ─── Android Terminal Helper ───────────────────────────
+const addAndroidTermLine = (text, cls = 'ok') => {
+    const container = document.getElementById('android-terminal-lines');
+    const term = document.getElementById('android-terminal');
+    if (!container) return;
+
+    const line = document.createElement('div');
+    line.className = `t - line t - ${cls} `;
+    const icons = { ok: '✔ ', err: '✘ ', hd: '⟫ ', sys: '◆ ', info: '' };
+    line.textContent = (icons[cls] || '') + text;
+    container.appendChild(line);
+    container.scrollTop = container.scrollHeight;
 };
 
 // ─── Mark setup done ───────────────────────────────────
@@ -869,14 +914,24 @@ const connectSSE = (mode = 'setup') => {
 
             case 'remote_linked': {
                 const status = document.getElementById('remote-active-status');
-                const controls = document.getElementById('remote-setup-controls');
                 if (status) status.style.display = 'block';
-                if (controls) controls.style.display = 'block';
                 addTermLine(`[BRIDGE] Remote device linked: ${data.deviceName} `, 'sys');
                 break;
             }
             case 'remote_log':
                 addTermLine(`[REMOTE] ${data} `, 'info');
+                // Also add to Android terminal if active
+                if (androidStep === 2) {
+                    addAndroidTermLine(data, 'info');
+                }
+                break;
+            case 'remote_prompt':
+                // Show prompt in Android UI
+                if (androidStep === 2) {
+                    document.getElementById('android-input-area').style.display = 'block';
+                    document.getElementById('android-prompt-text').textContent = data;
+                    document.getElementById('android-answer').focus();
+                }
                 break;
 
             case 'onboard_error_line':

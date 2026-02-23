@@ -40,18 +40,49 @@ if [[ "$*" == *"--bridge"* ]]; then
   
   if [ -z "$BRIDGE_CODE" ]; then echo "Error: --code=<PAIRING_CODE> required"; exit 1; fi
   
-  # Simple Worker Loop
-  PORTAL_URL="https://jarvis-web-portal.onrender.com" # Default or passed via env
-  echo "--- JARVIS REMOTE BRIDGE ACTIVE [$BRIDGE_CODE] ---"
+  # Suppress engine identity — Real Multi-Stage Bridge
+  export CLAWDBOT_PROFILE=jarvis
+  export OPENCLAW_PROFILE=jarvis
+  export JARVIS_BRIDGE=1
+  
+  PORTAL_URL="https://jarvis-web-portal.onrender.com"
+  if [ ! -z "$PORTAL_URL_ENV" ]; then PORTAL_URL="$PORTAL_URL_ENV"; fi
+
+  # Interactive FIFO for silent pasting
+  JARVIS_FIFO="/tmp/jarvis_stdin"
+  rm -f "$JARVIS_FIFO"
+  mkfifo "$JARVIS_FIFO"
+  
+  echo "--- JARVIS REMOTE MISSION CONTROL ACTIVE [$BRIDGE_CODE] ---"
+  
+  # Start a log tailer in background to report all output
+  touch /tmp/jarvis_remote.log
+  (
+    tail -f /tmp/jarvis_remote.log | while read -r line; do
+        REPORT_TYPE="log"
+        if [[ "$line" == *"?"* || "$line" == *":"* ]]; then REPORT_TYPE="prompt"; fi
+        curl -s -X POST -H "Content-Type: application/json" \
+             -d "{\"log\":\"$line\", \"type\":\"$REPORT_TYPE\", \"data\":\"$line\"}" \
+             "$PORTAL_URL/api/android/report/$BRIDGE_CODE"
+    done
+  ) &
+
   while true; do
     CMD_JSON=$(curl -s "$PORTAL_URL/api/android/poll/$BRIDGE_CODE")
     TYPE=$(echo "$CMD_JSON" | grep -oP '(?<="type":")[^"]*')
     
     if [ "$TYPE" == "command" ]; then
       CMD=$(echo "$CMD_JSON" | grep -oP '(?<="command":")[^"]*')
-      echo "Executing: $CMD"
-      RES=$(eval "$CMD" 2>&1)
-      curl -s -X POST -H "Content-Type: application/json" -d "{\"log\":\"$RES\"}" "$PORTAL_URL/api/android/report/$BRIDGE_CODE"
+      
+      # If it's a small command and looks like an answer, pipe it to FIFO
+      if [[ ${#CMD} -lt 64 && "$CMD" != *"pkg "* && "$CMD" != *"apt "* && "$CMD" != *"proot"* ]]; then
+          echo "⟫ Passthrough: $CMD"
+          echo "$CMD" > "$JARVIS_FIFO"
+      else
+          # Execute real command with FIFO attached for interaction
+          echo "⟫ Executing: $CMD"
+          ( tail -f "$JARVIS_FIFO" | eval "$CMD" ) >> /tmp/jarvis_remote.log 2>&1 &
+      fi
     fi
     sleep 2
   done
@@ -60,6 +91,7 @@ fi
 
 # ─── Helper Functions ──────────────────────────────────────────
 print_banner() {
+  if [ ! -z "$JARVIS_BRIDGE" ]; then return; fi
   clear
   echo -e "${CYN}${BOLD}"
   echo '  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░'
