@@ -21,6 +21,12 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve bootstrap script from root
+app.get('/jarvis.sh', (req, res) => {
+    res.sendFile(path.resolve(__dirname, '..', 'jarvis.sh'));
+});
+
 app.use(session({
     secret: process.env.SESSION_SECRET || 'jarvis-by-balaraman-secret',
     resave: false,

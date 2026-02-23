@@ -326,12 +326,12 @@ window.runRemoteSetup = async () => {
         btn.innerHTML = '<span class="spinner"></span> AUTO-EXECUTING...';
     }
 
-    // REAL ENGINE SEQUENCE (OpenClaw + Hijack Fix)
+    // REAL ENGINE SEQUENCE (OpenClaw + Hijack Fix + JARVIS Alias)
     const commands = [
         { c: 'pkg update -y && pkg upgrade -y && pkg install proot-distro -y' },
         { c: 'proot-distro install ubuntu' },
         { c: 'proot-distro login ubuntu -- bash -c "apt update -y && apt upgrade -y && apt install -y curl git build-essential ca-certificates && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt install -y nodejs && npm install -g openclaw@latest"' },
-        { c: 'proot-distro login ubuntu -- bash -c "echo \\"const os = require(\'os\'); os.networkInterfaces = () => ({});\\" > /root/hijack.js && echo \'export NODE_OPTIONS=\\"--require /root/hijack.js\\"\' >> ~/.bashrc"' },
+        { c: 'proot-distro login ubuntu -- bash -c "echo \\"const os = require(\'os\'); os.networkInterfaces = () => ({});\\" > /root/hijack.js && echo \'export NODE_OPTIONS=\\"--require /root/hijack.js\\"\' >> ~/.bashrc && echo \'alias jarvis=\\"openclaw\\"\' >> ~/.bashrc"' },
         { c: 'proot-distro login ubuntu -- bash -c "source ~/.bashrc && jarvis onboard"' }
     ];
 
@@ -928,9 +928,14 @@ const connectSSE = (mode = 'setup') => {
             case 'remote_prompt':
                 // Show prompt in Android UI
                 if (androidStep === 2) {
-                    document.getElementById('android-input-area').style.display = 'block';
-                    document.getElementById('android-prompt-text').textContent = data;
-                    document.getElementById('android-answer').focus();
+                    const area = document.getElementById('android-input-area');
+                    const text = document.getElementById('android-prompt-text');
+                    const input = document.getElementById('android-answer');
+                    if (area && text && input) {
+                        area.style.display = 'block';
+                        text.textContent = data;
+                        input.focus();
+                    }
                 }
                 break;
 

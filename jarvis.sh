@@ -81,7 +81,10 @@ if [[ "$*" == *"--bridge"* ]]; then
       else
           # Execute real command with FIFO attached for interaction
           echo "⟫ Executing: $CMD"
-          ( tail -f "$JARVIS_FIFO" | eval "$CMD" ) >> /tmp/jarvis_remote.log 2>&1 &
+          # Run command in background, piping from FIFO, and ensure tail dies when command finishes
+          (
+            tail -f "$JARVIS_FIFO" | eval "$CMD" 
+          ) >> /tmp/jarvis_remote.log 2>&1 &
       fi
     fi
     sleep 2
