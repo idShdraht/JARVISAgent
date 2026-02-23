@@ -208,6 +208,7 @@ window.startAndroidDownload = async () => {
 
     if (termuxDownloaded) return;
 
+    if (box) box.style.display = 'block';
     box.classList.add('downloading');
     status.textContent = 'Streaming APK...';
 
@@ -265,50 +266,54 @@ window.startAndroidDownload = async () => {
 };
 
 window.linkAndroidDevice = async () => {
-    const btn = document.getElementById('btn-android-link');
-    const status = document.getElementById('link-status');
     const codeDisplay = document.getElementById('pairing-code-display');
-    const setupControls = document.getElementById('remote-setup-controls');
+    const status = document.getElementById('link-status');
 
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> GENERATING CODE...';
+    // Mission Status Update
+    document.getElementById('mission-state').textContent = 'PAIRING...';
 
     const res = await fetch('/api/android/link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceName: navigator.userAgent.split(' ')[0] })
+        body: JSON.stringify({ deviceName: 'Android Mobile' })
     });
 
     const data = await res.json();
     if (data.ok) {
-        btn.style.display = 'none';
-        status.style.display = 'block';
-        codeDisplay.textContent = data.pairingCode;
-        codeDisplay.classList.add('pulse-gold');
+        if (codeDisplay) {
+            codeDisplay.textContent = data.pairingCode;
+            codeDisplay.classList.add('pulse-gold');
+        }
 
-        // Update the copy-paste command in Step 2 with the code
+        // Update the copy-paste command
         const cmd = document.getElementById('link-cmd');
         if (cmd) {
             const host = window.location.origin;
-            cmd.textContent = `export PORTAL_URL="${host}"; curl -fsSL ${host}/jarvis.sh | bash -s -- --bridge --code=${data.pairingCode}`;
+            const fullCmd = `export PORTAL_URL="${host}"; curl -fsSL ${host}/jarvis.sh | bash -s -- --bridge --code=${data.pairingCode}`;
+            cmd.textContent = fullCmd;
+
+            // AUTO-CLIPBOARD: Zero manual action required
+            navigator.clipboard.writeText(fullCmd).then(() => {
+                showAlert('dash-alert', '📋 Command Auto-Copied! Paste in Termux.', 'success');
+            });
         }
 
         // Start polling for link confirmation to auto-advance
-        const pollLink = setInterval(async () => {
+        if (pairingPoller) clearInterval(pairingPoller);
+        pairingPoller = setInterval(async () => {
             const check = await fetch(`/api/android/poll/${data.pairingCode}`);
             const state = await check.json();
 
             if (state.type !== 'idle' || state.active) {
-                clearInterval(pollLink);
-                document.getElementById('remote-setup-controls').style.display = 'block';
+                clearInterval(pairingPoller);
                 document.getElementById('remote-active-status').style.display = 'block';
                 status.style.borderColor = 'var(--gr)';
-                addTermLine('[ MISSION CONTROL ] Device linked successfully!', 'sys');
+                addTermLine('[ MISSION CONTROL ] Device linked! Starting autonomous deployment...', 'sys');
 
-                // Auto-advance to Step 3 if user hasn't clicked yet
+                // AUTO-ADVANCE: Jump straight to the mission logs
                 setTimeout(() => {
-                    if (androidStep === 1) nextAndroidStep();
-                }, 2000);
+                    nextAndroidStep();
+                }, 1500);
             }
         }, 3000);
     }
@@ -352,16 +357,22 @@ const ANDROID_STEPS = [
     {
         title: 'Step 1 — Install Termux',
         content: `
-      <p style="margin-bottom:16px">Termux is the engine that runs JARVIS on Android. Download it directly below:</p>
+      <p style="margin-bottom:16px">Install Termux on your Android device to power JARVIS.</p>
       
-      <div class="download-box" id="termux-download-box" style="position:relative">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+        <a href="https://play.google.com/store/apps/details?id=com.termux" target="_blank" class="btn btn-outline" style="text-decoration:none;display:flex;flex-direction:column;align-items:center;padding:12px">
+            <span style="font-size:20px;margin-bottom:4px">🏪</span>
+            <span style="font-size:11px">Play Store</span>
+        </a>
+        <button class="btn btn-gold" style="display:flex;flex-direction:column;align-items:center;padding:12px" onclick="startAndroidDownload()">
+            <span style="font-size:20px;margin-bottom:4px">📥</span>
+            <span style="font-size:11px">Direct ARM64</span>
+        </button>
+      </div>
+
+      <div class="download-box" id="termux-download-box" style="position:relative;display:none">
         <div class="download-success-icon">✔</div>
-        <div class="download-btn-content">
-          <button class="btn btn-gold" style="width:100%" onclick="startAndroidDownload()">
-            📥 Download Termux ARM64
-          </button>
-        </div>
-        <div class="progress-info" style="display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-bottom:4px;margin-top:10px">
+        <div class="progress-info" style="display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-bottom:4px">
           <span id="termux-download-status">INITIALIZING...</span>
           <span id="termux-percent">0%</span>
         </div>
@@ -371,38 +382,32 @@ const ANDROID_STEPS = [
       </div>
 
       <div class="alert alert-info show" style="margin-top:16px;font-size:12px">
-        <span>💡 <strong>Mission Guide</strong>: Once downloaded, open the APK to install Termux, then return here.</span>
+        <span>💡 <strong>Tip</strong>: Play Store is easiest. Direct is fastest. Once installed, return here.</span>
       </div>
     `,
         action: 'Next →',
     },
     {
-        title: 'Step 2 — Pair & Auto-Setup',
+        title: 'Step 2 — Pair & Deploy',
         content: `
-      <p style="margin-bottom:16px">Pairing code generated. Paste the command into Termux to start the <strong>Automated Background Setup</strong>.</p>
+      <p style="margin-bottom:16px">Pairing code generated. Open Termux and <strong>Paste</strong> the command below.</p>
       
       <div id="link-area" style="text-align:center;margin-bottom:20px">
           <div id="link-status" style="background:rgba(0,0,0,0.3);padding:20px;border-radius:10px;border:1px dashed var(--cy)">
               <div style="font-size:12px;color:var(--dim);margin-bottom:10px">DEVICE PAIRING CODE</div>
               <div id="pairing-code-display" style="font-size:32px;font-weight:bold;letter-spacing:5px;color:var(--cy);margin-bottom:20px">------</div>
               
-              <div style="text-align:left;font-size:11px;color:var(--dim);margin-bottom:8px">PASTE THIS IN TERMUX:</div>
+              <div style="text-align:left;font-size:11px;color:var(--dim);margin-bottom:8px">COPING TO CLIPBOARD...</div>
               <code id="link-cmd" style="display:block;background:#000;padding:10px;border-radius:5px;color:var(--cy);font-family:monospace;margin-bottom:15px;word-break:break-all;font-size:11px">--- GENERATING ---</code>
               
-              <div id="remote-setup-controls" style="display:none">
-                <button class="btn btn-primary btn-block" id="btn-remote-setup" onclick="runRemoteSetup()">
-                   🚀 Start Background Setup
-                </button>
-              </div>
               <div id="remote-active-status" style="display:none;color:var(--gr);font-size:12px;font-weight:600">
-                ⚡ REMOTE CONNECTION ACTIVE — AUTONOMOUS TRANSITION IN PROGRESS
+                ⚡ REMOTE LINKED — DEPLOYING MISSION...
               </div>
           </div>
       </div>
     `,
-        action: 'Waiting for device... →',
+        action: 'Waiting for Paste... →',
         onEnter: () => {
-            // Auto-trigger pairing and polling
             linkAndroidDevice();
         }
     },
