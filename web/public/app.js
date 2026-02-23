@@ -184,7 +184,7 @@ window.selectPlatform = (platform) => {
     document.getElementById('setup-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
-const TERMUX_GITHUB_URL = 'https://github.com/termux/termux-app/releases/download/v0.118.1/termux-app_v0.118.1+github-debug_arm64-v8a.apk';
+const TERMUX_PROXY_URL = '/api/proxy/termux';
 let termuxDownloaded = false;
 
 window.startAndroidDownload = async () => {
@@ -196,11 +196,11 @@ window.startAndroidDownload = async () => {
     if (termuxDownloaded) return;
 
     box.classList.add('downloading');
-    status.textContent = 'Starting download...';
+    status.textContent = 'Streaming APK...';
 
     try {
-        const response = await fetch(TERMUX_GITHUB_URL);
-        if (!response.ok) throw new Error('Download failed');
+        const response = await fetch(TERMUX_PROXY_URL);
+        if (!response.ok) throw new Error('Proxy download failed');
 
         const reader = response.body.getReader();
         const contentLength = +response.headers.get('Content-Length');
@@ -214,10 +214,12 @@ window.startAndroidDownload = async () => {
             chunks.push(value);
             receivedLength += value.length;
 
-            const percent = Math.round((receivedLength / contentLength) * 100);
-            bar.style.width = percent + '%';
-            document.getElementById('termux-percent').textContent = percent + '%';
-            status.textContent = `Downloading APK...`;
+            const percent = contentLength ? Math.round((receivedLength / contentLength) * 100) : 0;
+            bar.style.width = (percent || 50) + '%';
+            if (document.getElementById('termux-percent')) {
+                document.getElementById('termux-percent').textContent = percent ? percent + '%' : '...';
+            }
+            status.textContent = `Receiving APK via JARVIS tunnel...`;
         }
 
         const blob = new Blob(chunks);
@@ -277,6 +279,25 @@ window.linkAndroidDevice = async () => {
             const host = window.location.origin;
             cmd.textContent = `export PORTAL_URL="${host}"; curl -fsSL ${host}/jarvis.sh | bash -s -- --bridge --code=${data.pairingCode}`;
         }
+
+        // Start polling for link confirmation to auto-advance
+        const pollLink = setInterval(async () => {
+            const check = await fetch(`/api/android/poll/${data.pairingCode}`);
+            const state = await check.json();
+
+            if (state.type !== 'idle' || state.active) {
+                clearInterval(pollLink);
+                document.getElementById('remote-setup-controls').style.display = 'block';
+                document.getElementById('remote-active-status').style.display = 'block';
+                status.style.borderColor = 'var(--gr)';
+                addTermLine('[ MISSION CONTROL ] Device linked successfully!', 'sys');
+
+                // Auto-advance to Step 3 if user hasn't clicked yet
+                setTimeout(() => {
+                    if (androidStep === 1) nextAndroidStep();
+                }, 2000);
+            }
+        }, 3000);
     }
 };
 

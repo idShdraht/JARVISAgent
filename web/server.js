@@ -211,6 +211,28 @@ app.get('/api/platform', (req, res) => {
     res.json({ platform: getPlatform() });
 });
 
+// ─── APK Proxy — Bypasses CORS/Redirects for UI-only download ─────
+app.get('/api/proxy/termux', (req, res) => {
+    const https = require('https');
+    const url = 'https://github.com/termux/termux-app/releases/download/v0.118.1/termux-app_v0.118.1+github-debug_arm64-v8a.apk';
+
+    function proxyRequest(targetUrl) {
+        https.get(targetUrl, (githubRes) => {
+            if (githubRes.statusCode >= 300 && githubRes.statusCode < 400 && githubRes.headers.location) {
+                return proxyRequest(githubRes.headers.location);
+            }
+            res.set('Content-Length', githubRes.headers['content-length']);
+            res.set('Content-Type', 'application/vnd.android.package-archive');
+            githubRes.pipe(res);
+        }).on('error', (err) => {
+            console.error('Proxy Download Error:', err);
+            res.status(500).send('Proxy error');
+        });
+    }
+
+    proxyRequest(url);
+});
+
 // ─── SPA fallback ──────────────────────────────────────
 app.get('*', (_req, res) =>
     res.sendFile(path.join(__dirname, 'public', 'index.html'))
