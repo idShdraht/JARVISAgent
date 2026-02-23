@@ -196,47 +196,56 @@ window.startAndroidDownload = async () => {
     if (termuxDownloaded) return;
 
     box.classList.add('downloading');
+    status.textContent = 'Starting download...';
 
-    // Start actual download in background
-    const link = document.createElement('a');
-    link.href = TERMUX_GITHUB_URL;
-    link.download = 'termux-arm64.apk';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+        const response = await fetch(TERMUX_GITHUB_URL);
+        if (!response.ok) throw new Error('Download failed');
 
-    // Simulate cool progress
-    const phases = [
-        { p: 15, t: 'Connecting to GitHub...' },
-        { p: 35, t: 'Requesting ARM64 Binary...' },
-        { p: 65, t: 'Downloading APK Package (95MB)...' },
-        { p: 90, t: 'Verifying Integrity...' },
-        { p: 100, t: 'Download Initialized!' }
-    ];
+        const reader = response.body.getReader();
+        const contentLength = +response.headers.get('Content-Length');
+        let receivedLength = 0;
+        let chunks = [];
 
-    for (const phase of phases) {
-        status.textContent = phase.t;
-        let start = parseInt(bar.style.width) || 0;
-        let end = phase.p;
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-        for (let i = start; i <= end; i++) {
-            bar.style.width = i + '%';
-            await new Promise(r => setTimeout(r, 15 + Math.random() * 20));
+            chunks.push(value);
+            receivedLength += value.length;
+
+            const percent = Math.round((receivedLength / contentLength) * 100);
+            bar.style.width = percent + '%';
+            document.getElementById('termux-percent').textContent = percent + '%';
+            status.textContent = `Downloading APK...`;
         }
-        await new Promise(r => setTimeout(r, 400));
-    }
 
-    termuxDownloaded = true;
-    box.classList.remove('downloading');
-    box.classList.add('completed');
-    status.textContent = 'READY TO INSTALL';
-    status.style.color = 'var(--gr)';
+        const blob = new Blob(chunks);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'termux-arm64.apk';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
-    if (nextBtn) {
-        nextBtn.disabled = false;
-        nextBtn.innerHTML = 'Next →';
-        nextBtn.style.opacity = '1';
-        nextBtn.classList.add('pulse-gold');
+        termuxDownloaded = true;
+        box.classList.remove('downloading');
+        box.classList.add('completed');
+        status.textContent = 'DOWNLOAD READY';
+        document.getElementById('termux-percent').textContent = '100%';
+        status.style.color = 'var(--gr)';
+
+        if (nextBtn) {
+            nextBtn.disabled = false;
+            nextBtn.innerHTML = 'Next →';
+            nextBtn.style.opacity = '1';
+            nextBtn.classList.add('pulse-gold');
+        }
+    } catch (error) {
+        status.textContent = 'Download error. Please try again.';
+        status.style.color = 'var(--re)';
+        box.classList.remove('downloading');
     }
 };
 
@@ -286,19 +295,20 @@ window.runRemoteSetup = async () => {
         { c: 'proot-distro login ubuntu -- jarvis onboard' }
     ];
 
-    for (const cmd of commands) {
-        await fetch('/api/android/command', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ command: cmd.c })
-        });
-        // Wait for next CMD to be polled or UI to reflect progress
-    }
+    // Start command push in background (don't await)
+    (async () => {
+        for (const cmd of commands) {
+            await fetch('/api/android/command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: cmd.c })
+            });
+        }
+    })();
 
-    // Auto-advance to Step 3 (Watch logs)
-    setTimeout(() => {
-        nextAndroidStep();
-    }, 1500);
+    // Auto-advance to Step 3 (Watch logs) immediately
+    nextAndroidStep();
+    addTermLine('[ MISSION CONTROL ] Background mission started...', 'sys');
 };
 
 // ─── Android Guide ─────────────────────────────────────
@@ -306,23 +316,26 @@ const ANDROID_STEPS = [
     {
         title: 'Step 1 — Install Termux',
         content: `
-      <p style="margin-bottom:16px">Termux is a free terminal app for Android. Download it directly from the GitHub source:</p>
+      <p style="margin-bottom:16px">Termux is the engine that runs JARVIS on Android. Download it directly below:</p>
       
-      <div class="download-box" id="termux-download-box">
+      <div class="download-box" id="termux-download-box" style="position:relative">
         <div class="download-success-icon">✔</div>
         <div class="download-btn-content">
           <button class="btn btn-gold" style="width:100%" onclick="startAndroidDownload()">
-            📥 Download Termux from GitHub
+            📥 Download Termux ARM64
           </button>
         </div>
-        <div class="progress-container">
+        <div class="progress-info" style="display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-bottom:4px;margin-top:10px">
+          <span id="termux-download-status">INITIALIZING...</span>
+          <span id="termux-percent">0%</span>
+        </div>
+        <div class="progress-container" style="height:6px">
           <div class="progress-bar" id="termux-progress-bar"></div>
         </div>
-        <div class="download-status" id="termux-download-status">INITIALIZING...</div>
       </div>
 
-      <div class="alert alert-info show" style="margin:0">
-        ⚠ <strong>Important</strong>: Do not use the Play Store version. The GitHub version is the ONLY one that supports JARVIS.
+      <div class="alert alert-info show" style="margin-top:16px;font-size:12px">
+        <span>💡 <strong>Mission Guide</strong>: Once downloaded, open the APK to install Termux, then return here.</span>
       </div>
     `,
         action: 'Next →',
