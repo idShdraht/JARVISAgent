@@ -200,69 +200,15 @@ window.selectPlatform = (platform) => {
 const TERMUX_PROXY_URL = '/api/proxy/termux';
 let termuxDownloaded = false;
 
-window.startAndroidDownload = async () => {
-    const box = document.getElementById('termux-download-box');
-    const bar = document.getElementById('termux-progress-bar');
-    const status = document.getElementById('termux-download-status');
-    const nextBtn = document.getElementById('btn-android-next');
+window.autoNextAndroid = () => {
+    addTermLine('[ JARVIS ] Launching Play Store... Setup will resume shortly.', 'info');
+    setTimeout(() => {
+        if (androidStep === 0) nextAndroidStep();
+    }, 3000);
+};
 
-    if (termuxDownloaded) return;
-
-    if (box) box.style.display = 'block';
-    box.classList.add('downloading');
-    status.textContent = 'Streaming APK...';
-
-    try {
-        const response = await fetch(TERMUX_PROXY_URL);
-        if (!response.ok) throw new Error('Proxy download failed');
-
-        const reader = response.body.getReader();
-        const contentLength = +response.headers.get('Content-Length');
-        let receivedLength = 0;
-        let chunks = [];
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            chunks.push(value);
-            receivedLength += value.length;
-
-            const percent = contentLength ? Math.round((receivedLength / contentLength) * 100) : 0;
-            bar.style.width = (percent || 50) + '%';
-            if (document.getElementById('termux-percent')) {
-                document.getElementById('termux-percent').textContent = percent ? percent + '%' : '...';
-            }
-            status.textContent = `Receiving APK via JARVIS tunnel...`;
-        }
-
-        const blob = new Blob(chunks);
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'termux-arm64.apk';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        termuxDownloaded = true;
-        box.classList.remove('downloading');
-        box.classList.add('completed');
-        status.textContent = 'DOWNLOAD READY';
-        document.getElementById('termux-percent').textContent = '100%';
-        status.style.color = 'var(--gr)';
-
-        if (nextBtn) {
-            nextBtn.disabled = false;
-            nextBtn.innerHTML = 'Next →';
-            nextBtn.style.opacity = '1';
-            nextBtn.classList.add('pulse-gold');
-        }
-    } catch (error) {
-        status.textContent = 'Download error. Please try again.';
-        status.style.color = 'var(--re)';
-        box.classList.remove('downloading');
-    }
+window.startAndroidDownload = () => {
+    // Hidden / Deprecated in favor of Play Store logic
 };
 
 window.linkAndroidDevice = async () => {
@@ -380,30 +326,15 @@ const ANDROID_STEPS = [
         content: `
       <p style="margin-bottom:16px">Install Termux on your Android device to power JARVIS.</p>
       
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-        <a href="https://play.google.com/store/apps/details?id=com.termux" target="_blank" class="btn btn-outline" style="text-decoration:none;display:flex;flex-direction:column;align-items:center;padding:12px">
-            <span style="font-size:20px;margin-bottom:4px">🏪</span>
-            <span style="font-size:11px">Play Store</span>
+      <div style="display:flex;justify-content:center;margin-bottom:16px">
+        <a href="https://play.google.com/store/apps/details?id=com.termux" target="_blank" class="btn btn-gold" style="text-decoration:none;display:flex;flex-direction:column;align-items:center;padding:16px 40px;width:auto" onclick="autoNextAndroid()">
+            <span style="font-size:24px;margin-bottom:8px">🏪</span>
+            <span style="font-size:13px;font-weight:bold">Install from Play Store</span>
         </a>
-        <button class="btn btn-gold" style="display:flex;flex-direction:column;align-items:center;padding:12px" onclick="startAndroidDownload()">
-            <span style="font-size:20px;margin-bottom:4px">📥</span>
-            <span style="font-size:11px">Direct ARM64</span>
-        </button>
-      </div>
-
-      <div class="download-box" id="termux-download-box" style="position:relative;display:none">
-        <div class="download-success-icon">✔</div>
-        <div class="progress-info" style="display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-bottom:4px">
-          <span id="termux-download-status">INITIALIZING...</span>
-          <span id="termux-percent">0%</span>
-        </div>
-        <div class="progress-container" style="height:6px">
-          <div class="progress-bar" id="termux-progress-bar"></div>
-        </div>
       </div>
 
       <div class="alert alert-info show" style="margin-top:16px;font-size:12px">
-        <span>💡 <strong>Tip</strong>: Play Store is easiest. Direct is fastest. Once installed, return here.</span>
+        <span>💡 <strong>Tip</strong>: Click the button to open Play Store. Once installed, JARVIS will automatically move to the next step.</span>
       </div>
     `,
         action: 'Next →',
@@ -517,7 +448,7 @@ const renderAndroidStep = () => {
     ${step.content}
     ${step.action ? `
       <div style="margin-top:24px;display:flex;justify-content:flex-end">
-        <button class="btn btn-primary" id="btn-android-next" onclick="nextAndroidStep()" ${androidStep === 0 && !termuxDownloaded ? 'disabled style="opacity:0.5"' : ''}>
+        <button class="btn btn-primary" id="btn-android-next" onclick="nextAndroidStep()">
           ${step.action}
         </button>
       </div>
@@ -934,7 +865,7 @@ const connectSSE = (mode = 'setup') => {
                     if (area && text && input) {
                         area.style.display = 'block';
                         text.textContent = data;
-                        input.focus();
+                        setTimeout(() => input.focus(), 100);
                     }
                 }
                 break;

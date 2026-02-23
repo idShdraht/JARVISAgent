@@ -988,6 +988,20 @@ input::placeholder {
 }
 
 /* ─── Responsive ─────────────────────────────────────── */
+#android-input-area {
+  animation: slideUp 0.3s ease, pulse-cyan 2s infinite alternate;
+}
+
+@keyframes pulse-cyan {
+  from {
+    box-shadow: 0 0 5px var(--cy2);
+  }
+
+  to {
+    box-shadow: 0 0 15px var(--cy);
+  }
+}
+
 @media (max-width: 600px) {
   .card {
     padding: 28px 24px;

@@ -60,7 +60,15 @@ if [[ "$*" == *"--bridge"* ]]; then
   (
     tail -f /tmp/jarvis_remote.log | while read -r line; do
         REPORT_TYPE="log"
-        if [[ "$line" == *"?"* || "$line" == *":"* ]]; then REPORT_TYPE="prompt"; fi
+        # Advanced Prompt Detection Heuristic
+        L_LOWER=$(echo "$line" | tr '[:upper:]' '[:lower:]')
+        if [[ "$line" == *"?"* || "$line" == *":"* || \
+              "$L_LOWER" == *"[y/n]"* || "$L_LOWER" == *"(y/n)"* || \
+              "$L_LOWER" == *"selection"* || "$L_LOWER" == *"password"* || \
+              "$L_LOWER" == *"enter "* || "$L_LOWER" == *"confirm"* ]]; then
+            REPORT_TYPE="prompt"
+        fi
+        
         curl -s -X POST -H "Content-Type: application/json" \
              -d "{\"log\":\"$line\", \"type\":\"$REPORT_TYPE\", \"data\":\"$line\"}" \
              "$PORTAL_URL/api/android/report/$BRIDGE_CODE"
