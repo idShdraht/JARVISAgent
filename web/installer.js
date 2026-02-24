@@ -359,16 +359,36 @@ const remoteSessions = new Map(); // pairingCode -> { userId, deviceName, queue:
 const userToCode = new Map();     // userId -> pairingCode
 
 const addRemoteSession = (userId, code, deviceName) => {
-    remoteSessions.set(code, { userId, deviceName, queue: [], lastActive: Date.now() });
+    remoteSessions.set(code, { userId, deviceName, queue: [], lastActive: Date.now(), deviceLinked: false });
     userToCode.set(userId, code);
-    sendSSE(userId, 'remote_linked', { code, deviceName });
+    // DO NOT send remote_linked SSE yet! 
+    // We wait until the real device actually polls.
 };
 
 const getPendingCommand = (code) => {
     const session = remoteSessions.get(code);
     if (!session) return null;
+
+    // This is called by the actual DEVICE
     session.lastActive = Date.now();
-    return session.queue.shift() || { type: 'idle', active: true };
+
+    // If this is the FIRST time the device polls, send the SSE event to the UI
+    if (!session.deviceLinked) {
+        session.deviceLinked = true;
+        sendSSE(session.userId, 'remote_linked', { code, deviceName: session.deviceName });
+    }
+
+    return session.queue.shift() || { type: 'idle' };
+};
+
+const getSessionStatus = (code) => {
+    const session = remoteSessions.get(code);
+    if (!session) return { exists: false };
+    return {
+        exists: true,
+        deviceLinked: !!session.deviceLinked,
+        lastActive: session.lastActive
+    };
 };
 
 const pushRemoteCommand = (userId, payload) => {

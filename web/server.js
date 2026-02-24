@@ -192,7 +192,14 @@ app.get('/api/android/poll/:code', (req, res) => {
         return res.json({ linked: !!activeCode, code: activeCode });
     }
 
-    const { getPendingCommand } = require('./installer');
+    const { getPendingCommand, getSessionStatus } = require('./installer');
+
+    // If request has a query param 'ui=true', it's a browser check, not a device poll
+    if (req.query.ui === 'true') {
+        const status = getSessionStatus(code);
+        return res.json({ type: 'status', ...status });
+    }
+
     const cmd = getPendingCommand(code);
     res.json(cmd || { type: 'idle' });
 });

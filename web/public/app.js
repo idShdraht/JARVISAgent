@@ -245,11 +245,12 @@ window.linkAndroidDevice = async () => {
         // Start polling for link confirmation to auto-advance
         if (pairingPoller) clearInterval(pairingPoller);
         pairingPoller = setInterval(async () => {
-            const check = await fetch(`/api/android/poll/${data.pairingCode}`);
+            // Add ui=true to distinguish browser check from device poll
+            const check = await fetch(`/api/android/poll/${data.pairingCode}?ui=true`);
             const state = await check.json();
 
-            // Check if device is active or has reported something
-            if (state.type !== 'idle' || state.active) {
+            // Check if device is TRULY linked
+            if (state.deviceLinked) {
                 clearInterval(pairingPoller);
                 const statusEl = document.getElementById('remote-active-status');
                 if (statusEl) statusEl.style.display = 'block';
@@ -261,7 +262,10 @@ window.linkAndroidDevice = async () => {
                 }
 
                 // AUTO-ADVANCE: Jump straight to the mission logs
-                if (androidStep === 1) nextAndroidStep();
+                if (androidStep === 1) {
+                    addTermLine('[ JARVIS ] Neural link synchronized. Advancing...', 'hd');
+                    setTimeout(() => nextAndroidStep(), 1500);
+                }
             }
         }, 1500); // Faster polling (1.5s) for instant response
     }
@@ -506,10 +510,16 @@ window.startAndroidGuide = () => {
 
     // Check if a link already exists
     fetch('/api/android/poll/check').then(r => r.json()).then(data => {
+        // Only jump if a code exists AND it's truly linked to a device
         if (data.linked && androidStep < 2) {
-            addTermLine('[ JARVIS ] Existing link detected. Restoring mission state...', 'sys');
-            androidStep = 2; // Jump to Mission Control
-            renderAndroidStep();
+            // Final verification that device is actually active using the ui flag
+            fetch(`/api/android/poll/${data.code}?ui=true`).then(r => r.json()).then(status => {
+                if (status.deviceLinked) {
+                    console.log('[JARVIS] Device linked. Jumping to mission control.');
+                    androidStep = 2; // Jump to Mission Control
+                    renderAndroidStep();
+                }
+            });
         }
     }).catch(() => { });
 };
