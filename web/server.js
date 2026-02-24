@@ -22,9 +22,25 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve bootstrap script from root
+// Serve bootstrap script with dynamic portal URL injection
 app.get('/jarvis.sh', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '..', 'jarvis.sh'));
+    const fs = require('fs');
+    const scriptPath = path.resolve(__dirname, '..', 'jarvis.sh');
+
+    if (!fs.existsSync(scriptPath)) {
+        return res.status(404).send('Script not found');
+    }
+
+    let script = fs.readFileSync(scriptPath, 'utf8');
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.get('host');
+    const portalUrl = `${protocol}://${host}`;
+
+    // Inject the URL directly into the script placeholder
+    script = script.replace('{{PORTAL_URL}}', portalUrl);
+
+    res.set('Content-Type', 'text/x-sh');
+    res.send(script);
 });
 
 app.use(session({

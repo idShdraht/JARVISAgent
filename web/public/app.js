@@ -233,8 +233,12 @@ window.linkAndroidDevice = async () => {
         const cmd = document.getElementById('link-cmd');
         if (cmd) {
             const host = window.location.origin;
-            const fullCmd = `export PORTAL_URL="${host}"; curl -fsSL ${host}/jarvis.sh | bash -s -- --bridge --code=${data.pairingCode}`;
+            // Add a timestamp as a cache-buster
+            const fullCmd = `export PORTAL_URL="${host}"; curl -fsSL ${host}/jarvis.sh?v=${Date.now()} | bash -s -- --bridge --code=${data.pairingCode}`;
             cmd.textContent = fullCmd;
+
+            addTermLine(`[ JARVIS ] Generated pairing command for session ${data.pairingCode}`, 'sys');
+            addTermLine(`[ JARVIS ] Awaiting connection from Android device...`, 'info');
 
             // AUTO-CLIPBOARD: Zero manual action required
             navigator.clipboard.writeText(fullCmd).then(() => {

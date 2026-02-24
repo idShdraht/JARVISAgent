@@ -45,9 +45,19 @@ if [[ "$*" == *"--bridge"* ]]; then
   export OPENCLAW_PROFILE=jarvis
   export JARVIS_BRIDGE=1
   
-  # Inherit from environment or use default
-  PORTAL_URL="${PORTAL_URL:-https://jarvis-web-portal.onrender.com}"
+  # Inherit from environment or use dynamic placeholder
+  PORTAL_URL="${PORTAL_URL:-{{PORTAL_URL}}}"
+  # Cleanup potential placeholder leftover
+  if [ "$PORTAL_URL" == "{{PORTAL_URL}}" ]; then PORTAL_URL="https://jarvisagent.onrender.com"; fi
   if [ ! -z "$PORTAL_URL_ENV" ]; then PORTAL_URL="$PORTAL_URL_ENV"; fi
+  
+  # 🌐 VERIFY CONNECTIVITY
+  echo -e "\033[38;5;48m[ JARVIS ] TESTING UPLINK... \033[0m"
+  if ! curl -s --head "$PORTAL_URL/api/platform" | head -n 1 | grep "200" > /dev/null; then
+    echo -e "\033[38;5;196m[ ERROR ] COUND NOT REACH PORTAL ADDR: $PORTAL_URL\033[0m"
+    echo -e "Check your internet or PORTAL_URL environment variable."
+    exit 1
+  fi
 
   # Use a local temp dir for Termux compatibility
   JARVIS_TMP="$HOME/.jarvis_tmp"
@@ -83,11 +93,13 @@ if [[ "$*" == *"--bridge"* ]]; then
 
   while true; do
     CMD_JSON=$(curl -s "$PORTAL_URL/api/android/poll/$BRIDGE_CODE")
-    # Improved JSON parsing for simple shells
-    TYPE=$(echo "$CMD_JSON" | grep -oP '(?<="type":")[^"]*' || echo "idle")
+    
+    # Robust JSON parsing for BusyBox/Termux shells (avoiding -P)
+    TYPE=$(echo "$CMD_JSON" | sed -n 's/.*"type":"\([^"]*\)".*/\1/p')
+    [ -z "$TYPE" ] && TYPE="idle"
     
     if [ "$TYPE" == "command" ]; then
-      CMD=$(echo "$CMD_JSON" | grep -oP '(?<="command":")[^"]*' | sed 's/\\n/\n/g')
+      CMD=$(echo "$CMD_JSON" | sed -n 's/.*"command":"\([^"]*\)".*/\1/p' | sed 's/\\n/\n/g')
       
       if [ ! -z "$CMD" ]; then
         # If it's a small command and looks like an answer, pipe it to FIFO
