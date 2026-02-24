@@ -40,25 +40,30 @@ if [[ "$*" == *"--bridge"* ]]; then
   
   if [ -z "$BRIDGE_CODE" ]; then echo "Error: --code=<PAIRING_CODE> required"; exit 1; fi
   
-  # Suppress engine identity — Real Multi-Stage Bridge
+  # Suppress engine identity
   export CLAWDBOT_PROFILE=jarvis
   export OPENCLAW_PROFILE=jarvis
   export JARVIS_BRIDGE=1
   
-  PORTAL_URL="https://jarvis-web-portal.onrender.com"
+  # Inherit from environment or use default
+  PORTAL_URL="${PORTAL_URL:-https://jarvis-web-portal.onrender.com}"
   if [ ! -z "$PORTAL_URL_ENV" ]; then PORTAL_URL="$PORTAL_URL_ENV"; fi
 
+  # Use a local temp dir for Termux compatibility
+  JARVIS_TMP="$HOME/.jarvis_tmp"
+  mkdir -p "$JARVIS_TMP"
+
   # Interactive FIFO for silent pasting
-  JARVIS_FIFO="/tmp/jarvis_stdin"
+  JARVIS_FIFO="$JARVIS_TMP/jarvis_stdin"
   rm -f "$JARVIS_FIFO"
   mkfifo "$JARVIS_FIFO"
   
-  echo "--- JARVIS REMOTE MISSION CONTROL ACTIVE [$BRIDGE_CODE] ---"
+  echo -e "\033[38;5;48m[ JARVIS ] REMOTE MISSION CONTROL ACTIVE [$BRIDGE_CODE]\033[0m"
   
   # Start a log tailer in background to report all output
-  touch /tmp/jarvis_remote.log
+  touch "$JARVIS_TMP/jarvis_remote.log"
   (
-    tail -f /tmp/jarvis_remote.log | while read -r line; do
+    tail -f "$JARVIS_TMP/jarvis_remote.log" | while read -r line; do
         REPORT_TYPE="log"
         # Advanced Prompt Detection Heuristic
         L_LOWER=$(echo "$line" | tr '[:upper:]' '[:lower:]')
@@ -69,33 +74,38 @@ if [[ "$*" == *"--bridge"* ]]; then
             REPORT_TYPE="prompt"
         fi
         
+        # Silence curl and ignore errors
         curl -s -X POST -H "Content-Type: application/json" \
              -d "{\"log\":\"$line\", \"type\":\"$REPORT_TYPE\", \"data\":\"$line\"}" \
-             "$PORTAL_URL/api/android/report/$BRIDGE_CODE"
+             "$PORTAL_URL/api/android/report/$BRIDGE_CODE" >/dev/null 2>&1
     done
   ) &
 
   while true; do
     CMD_JSON=$(curl -s "$PORTAL_URL/api/android/poll/$BRIDGE_CODE")
-    TYPE=$(echo "$CMD_JSON" | grep -oP '(?<="type":")[^"]*')
+    # Improved JSON parsing for simple shells
+    TYPE=$(echo "$CMD_JSON" | grep -oP '(?<="type":")[^"]*' || echo "idle")
     
     if [ "$TYPE" == "command" ]; then
-      CMD=$(echo "$CMD_JSON" | grep -oP '(?<="command":")[^"]*')
+      CMD=$(echo "$CMD_JSON" | grep -oP '(?<="command":")[^"]*' | sed 's/\\n/\n/g')
       
-      # If it's a small command and looks like an answer, pipe it to FIFO
-      if [[ ${#CMD} -lt 64 && "$CMD" != *"pkg "* && "$CMD" != *"apt "* && "$CMD" != *"proot"* ]]; then
-          echo "⟫ Passthrough: $CMD"
-          echo "$CMD" > "$JARVIS_FIFO"
-      else
-          # Execute real command with FIFO attached for interaction
-          echo "⟫ Executing: $CMD"
-          # Run command in background, piping from FIFO, and ensure tail dies when command finishes
-          (
-            tail -f "$JARVIS_FIFO" | eval "$CMD" 
-          ) >> /tmp/jarvis_remote.log 2>&1 &
+      if [ ! -z "$CMD" ]; then
+        # If it's a small command and looks like an answer, pipe it to FIFO
+        if [[ ${#CMD} -lt 64 && "$CMD" != *"pkg "* && "$CMD" != *"apt "* && "$CMD" != *"proot"* ]]; then
+            echo "⟫ Interaction: $CMD"
+            echo "$CMD" > "$JARVIS_FIFO"
+        else
+            # Execute real command with FIFO attached for interaction
+            echo "⟫ Executing Engine Command..."
+            echo "$CMD" >> "$JARVIS_TMP/jarvis_remote.log"
+            (
+              # Try to run with interactive input if needed
+              eval "$CMD" 2>&1 < "$JARVIS_FIFO"
+            ) >> "$JARVIS_TMP/jarvis_remote.log" 2>&1 &
+        fi
       fi
     fi
-    sleep 2
+    sleep 1.5
   done
   exit 0
 fi

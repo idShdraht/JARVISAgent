@@ -368,7 +368,7 @@ const getPendingCommand = (code) => {
     const session = remoteSessions.get(code);
     if (!session) return null;
     session.lastActive = Date.now();
-    return session.queue.shift() || null;
+    return session.queue.shift() || { type: 'idle', active: true };
 };
 
 const pushRemoteCommand = (userId, payload) => {
@@ -387,8 +387,29 @@ const handleRemoteReport = (code, report) => {
 
     if (report.log) {
         sendSSE(userId, 'remote_log', report.log);
+
+        // AUTO-DETECT CHOICES from remote logs
+        // This makes the Android bridge as smart as the local installer
+        const line = stripAnsi(report.log).trim();
+        if (CHOICE_REGEX.test(line)) {
+            // Accumulate if needed, but for now just send individual choice items
+            // Actually, the frontend choice logic expects the whole array.
+            // Let's use a session-level buffer for choices.
+            if (!session.choiceBuffer) session.choiceBuffer = [];
+            const m = line.match(CHOICE_REGEX);
+            session.choiceBuffer.push({ num: m[1], label: m[2].trim() });
+
+            clearTimeout(session.choiceTimeout);
+            session.choiceTimeout = setTimeout(() => {
+                if (session.choiceBuffer.length >= 2) {
+                    sendSSE(userId, 'remote_choice', { options: session.choiceBuffer });
+                }
+                session.choiceBuffer = [];
+            }, 300);
+        }
     }
-    if (report.type) {
+
+    if (report.type && report.type !== 'log') {
         sendSSE(userId, 'remote_' + report.type, report.data);
     }
 };

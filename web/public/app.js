@@ -201,10 +201,8 @@ const TERMUX_PROXY_URL = '/api/proxy/termux';
 let termuxDownloaded = false;
 
 window.autoNextAndroid = () => {
-    addTermLine('[ JARVIS ] Launching Play Store... Setup will resume shortly.', 'info');
-    setTimeout(() => {
-        if (androidStep === 0) nextAndroidStep();
-    }, 3000);
+    // Instant progress — no more dummy delays
+    if (androidStep === 0) nextAndroidStep();
 };
 
 window.startAndroidDownload = () => {
@@ -250,19 +248,40 @@ window.linkAndroidDevice = async () => {
             const check = await fetch(`/api/android/poll/${data.pairingCode}`);
             const state = await check.json();
 
+            // Check if device is active or has reported something
             if (state.type !== 'idle' || state.active) {
                 clearInterval(pairingPoller);
-                document.getElementById('remote-active-status').style.display = 'block';
-                status.style.borderColor = 'var(--gr)';
-                addTermLine('[ MISSION CONTROL ] Device linked! Starting autonomous deployment...', 'sys');
+                const statusEl = document.getElementById('remote-active-status');
+                if (statusEl) statusEl.style.display = 'block';
+
+                const btnNext = document.getElementById('btn-android-next');
+                if (btnNext) {
+                    btnNext.innerHTML = '⚡ LINKED! INITIALIZING...';
+                    btnNext.classList.add('btn-success');
+                }
 
                 // AUTO-ADVANCE: Jump straight to the mission logs
-                setTimeout(() => {
-                    nextAndroidStep();
-                }, 1500);
+                if (androidStep === 1) nextAndroidStep();
             }
-        }, 3000);
+        }, 1500); // Faster polling (1.5s) for instant response
     }
+};
+
+window.launchTermux = () => {
+    const cmd = document.getElementById('link-cmd')?.textContent?.trim();
+    if (!cmd || cmd.includes('GENERATING')) return;
+
+    // Termux Intent URI pattern
+    const intent = `intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;component=com.termux/.TermuxActivity;end`;
+
+    // Copy to clipboard first
+    navigator.clipboard.writeText(cmd).then(() => {
+        showAlert('dash-alert', '📋 Command Auto-Copied! Opening Termux...', 'success');
+        // Slight delay to allow alert to be seen
+        setTimeout(() => {
+            window.location.href = intent;
+        }, 600);
+    });
 };
 
 window.runRemoteSetup = async () => {
@@ -272,31 +291,20 @@ window.runRemoteSetup = async () => {
         btn.innerHTML = '<span class="spinner"></span> AUTO-EXECUTING...';
     }
 
-    // REAL ENGINE SEQUENCE (OpenClaw + Hijack Fix + JARVIS Alias)
-    const commands = [
-        { c: 'pkg update -y && pkg upgrade -y && pkg install proot-distro -y' },
-        { c: 'proot-distro install ubuntu' },
-        { c: 'proot-distro login ubuntu -- bash -c "apt update -y && apt upgrade -y && apt install -y curl git build-essential ca-certificates && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt install -y nodejs && npm install -g openclaw@latest"' },
-        { c: 'proot-distro login ubuntu -- bash -c "echo \\"const os = require(\'os\'); os.networkInterfaces = () => ({});\\" > /root/hijack.js && echo \'export NODE_OPTIONS=\\"--require /root/hijack.js\\"\' >> ~/.bashrc && echo \'alias jarvis=\\"openclaw\\"\' >> ~/.bashrc"' },
-        { c: 'proot-distro login ubuntu -- bash -c "source ~/.bashrc && jarvis onboard"' }
-    ];
+    // Combined One-Shot Installation Script (Optimized for Bridge)
+    const oneShot = `pkg update -y && pkg upgrade -y && pkg install proot-distro -y && proot-distro install ubuntu && proot-distro login ubuntu -- bash -c "apt update -y && apt upgrade -y && apt install -y curl git build-essential ca-certificates && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt install -y nodejs && npm install -g openclaw@latest && echo \\"const os = require('os'); os.networkInterfaces = () => ({});\\" > /root/hijack.js && echo 'export NODE_OPTIONS=\\"--require /root/hijack.js\\"' >> ~/.bashrc && source ~/.bashrc && openclaw onboard"`;
 
     // Start background mission
-    (async () => {
-        for (const cmd of commands) {
-            await fetch('/api/android/command', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ command: cmd.c })
-            });
-            // Small delay to prevent command overlapping
-            await new Promise(r => setTimeout(r, 1000));
-        }
-    })();
+    await fetch('/api/android/command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: oneShot })
+    });
 
     // Advance to Mission Control Step if not already there
     if (androidStep === 1) nextAndroidStep();
-    addTermLine('[ MISSION CONTROL ] Real-time engine deployment started...', 'sys');
+    addAndroidTermLine('[ MISSION CONTROL ] One-Shot Engine Deployment Initiated...', 'sys');
+    addAndroidTermLine('[ JARVIS ] Provisioning Ubuntu subsystem & dependencies...', 'info');
 };
 
 window.submitAndroidAnswer = async () => {
@@ -305,15 +313,28 @@ window.submitAndroidAnswer = async () => {
     if (!text) return;
 
     input.value = '';
-    document.getElementById('android-input-area').style.display = 'none';
+    // Don't hide input area yet, as multiple questions might come
+    // document.getElementById('android-input-area').style.display = 'none';
 
-    addTermLine('⟫ ' + text, 'hd');
+    addAndroidTermLine('⟫ ' + text, 'hd');
 
     // Send back to remote device
     await fetch('/api/android/command', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ command: text })
+    });
+};
+
+window.submitAndroidChoice = async (num, label) => {
+    addAndroidTermLine('⟫ ' + label, 'hd');
+    document.getElementById('android-choices').style.display = 'none';
+
+    // Send back to remote device
+    await fetch('/api/android/command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: num })
     });
 };
 
@@ -345,20 +366,34 @@ const ANDROID_STEPS = [
       <p style="margin-bottom:16px">Pairing code generated. Open Termux and <strong>Paste</strong> the command below.</p>
       
       <div id="link-area" style="text-align:center;margin-bottom:20px">
-          <div id="link-status" style="background:rgba(0,0,0,0.3);padding:20px;border-radius:10px;border:1px dashed var(--cy)">
-              <div style="font-size:12px;color:var(--dim);margin-bottom:10px">DEVICE PAIRING CODE</div>
-              <div id="pairing-code-display" style="font-size:32px;font-weight:bold;letter-spacing:5px;color:var(--cy);margin-bottom:20px">------</div>
+          <div id="link-status" style="background:rgba(255,255,255,0.02);padding:24px;border-radius:12px;border:1px dashed var(--cy)">
+              <div style="font-size:11px;color:var(--dim);margin-bottom:12px;letter-spacing:1px">DEVICE PAIRING CODE</div>
+              <div id="pairing-code-display" style="font-size:42px;font-weight:bold;letter-spacing:8px;color:var(--cy);margin-bottom:20px;text-shadow:0 0 20px rgba(0,229,255,0.3)">------</div>
               
-              <div style="text-align:left;font-size:11px;color:var(--dim);margin-bottom:8px">COPING TO CLIPBOARD...</div>
-              <code id="link-cmd" style="display:block;background:#000;padding:10px;border-radius:5px;color:var(--cy);font-family:monospace;margin-bottom:15px;word-break:break-all;font-size:11px">--- GENERATING ---</code>
+              <div style="margin-bottom:16px;background:#000;padding:12px;border-radius:8px;border:1px solid rgba(0,229,255,0.2)">
+                <div style="text-align:left;font-size:10px;color:var(--dim);margin-bottom:8px">COPY THIS COMMAND:</div>
+                <code id="link-cmd" style="display:block;color:var(--cy);font-family:monospace;word-break:break-all;font-size:11px;line-height:1.4">--- GENERATING ---</code>
+              </div>
+
+              <div style="margin-top:20px;display:flex;flex-direction:column;gap:10px">
+                <button class="btn btn-gold btn-block" id="btn-launch-termux" onclick="launchTermux()" style="margin:0;padding:14px">
+                  ⚡ AUTO-LAUNCH TERMUX
+                </button>
+                <div style="font-size:9px;color:var(--dim)">Copies command & Opens Termux app</div>
+              </div>
               
-              <div id="remote-active-status" style="display:none;color:var(--gr);font-size:12px;font-weight:600">
-                ⚡ REMOTE LINKED — DEPLOYING MISSION...
+              <div id="remote-active-status" style="display:none;color:var(--gr);font-size:12px;font-weight:600;animation:pulse 2s infinite;margin-top:12px">
+                ⚡ LINK ESTABLISHED — INITIALIZING ENGINE...
               </div>
           </div>
       </div>
+      <p style="font-size:12px;color:var(--dim);text-align:center">
+        Paste the command in Termux and press <b>Enter</b>.<br>
+        JARVIS will automatically move to the next step once linked.
+      </p>
     `,
-        action: 'Waiting for Paste... →',
+        action: 'Awaiting Termux Link...',
+        disabled: true, // Disable manual skip
         onEnter: () => {
             linkAndroidDevice();
         }
@@ -366,13 +401,9 @@ const ANDROID_STEPS = [
     {
         title: 'Step 3 — Mission Control',
         content: `
-      <p style="margin-bottom:16px">The JARVIS engine is deploying. Follow the logs and answer any setup questions below.</p>
+      <p style="margin-bottom:16px">The JARVIS engine is deploying via One-Shot Installer. Follow the logs below.</p>
       
-      <div id="android-terminal" class="terminal-container" style="margin-bottom:16px">
-        <div id="android-terminal-lines" style="height:200px;overflow-y:auto;background:#000;color:var(--cy);padding:10px;font-family:monospace;font-size:11px;border-radius:5px;border:1px solid var(--cy)">
-           <div class="t-line t-sys">⟫ [ JARVIS ] Establishing secure neural link...</div>
-        </div>
-      </div>
+      <!-- Terminal is now visible in the main UI wrapper -->
 
       <div id="android-input-area" style="display:none;background:rgba(0,243,255,0.05);padding:12px;border-radius:8px;border:1px solid var(--cy2);margin-top:10px">
         <div style="font-size:11px;color:var(--cy);margin-bottom:8px">SYSTEM PROMPT: <span id="android-prompt-text">---</span></div>
@@ -383,11 +414,12 @@ const ANDROID_STEPS = [
       </div>
 
       <p style="margin-top:20px;font-size:12px;color:var(--dim)">
-        ⚡ DO NOT CLOSE THIS PAGE. Background setup will pause if the connection is lost.
+        ⚡ DO NOT CLOSE THIS PAGE. Deployment takes 2-5 minutes depending on your internet.
       </p>
     `,
         action: 'Finish Deployment →',
         onEnter: () => {
+            document.getElementById('android-terminal-wrapper').style.display = 'block';
             runRemoteSetup();
         }
     },
@@ -398,7 +430,7 @@ const ANDROID_STEPS = [
         <div style="font-size:60px;margin-bottom:16px">🤖</div>
         <h2 style="font-size:22px;margin-bottom:12px">Setup Complete!</h2>
         <p style="color:var(--dim);margin-bottom:24px">
-          JARVIS is now active. Launch it anytime in Termux:
+          JARVIS is now active in your Termux Ubuntu environment.
         </p>
         <code style="background:#020b14;padding:12px 24px;border-radius:8px;font-size:14px;color:var(--cy);display:inline-block;border:1px solid var(--cy)">
           jarvis
@@ -406,6 +438,9 @@ const ANDROID_STEPS = [
       </div>
     `,
         action: null,
+        onEnter: () => {
+            // Hide terminal on success? Or keep it? The user likes it, so keep it.
+        }
     },
 ];
 
@@ -448,7 +483,7 @@ const renderAndroidStep = () => {
     ${step.content}
     ${step.action ? `
       <div style="margin-top:24px;display:flex;justify-content:flex-end">
-        <button class="btn btn-primary" id="btn-android-next" onclick="nextAndroidStep()">
+        <button class="btn btn-primary" id="btn-android-next" ${step.disabled ? 'disabled style="opacity:0.6;background:var(--dim);cursor:not-allowed"' : ''} onclick="nextAndroidStep()">
           ${step.action}
         </button>
       </div>
@@ -464,8 +499,19 @@ const renderAndroidStep = () => {
 
 window.startAndroidGuide = () => {
     selectedPlatform = 'android';
+    // If we're already linked (e.g. page reload), we can potentially skip or show status
+    // For now, reset to 0 but if we find linking in progress we could jump
     androidStep = 0;
     renderAndroidStep();
+
+    // Check if a link already exists
+    fetch('/api/android/poll/check').then(r => r.json()).then(data => {
+        if (data.linked && androidStep < 2) {
+            addTermLine('[ JARVIS ] Existing link detected. Restoring mission state...', 'sys');
+            androidStep = 2; // Jump to Mission Control
+            renderAndroidStep();
+        }
+    }).catch(() => { });
 };
 
 window.copyCmd = () => {
@@ -848,6 +894,12 @@ const connectSSE = (mode = 'setup') => {
                 const status = document.getElementById('remote-active-status');
                 if (status) status.style.display = 'block';
                 addTermLine(`[BRIDGE] Remote device linked: ${data.deviceName} `, 'sys');
+
+                // AUTO-ADVANCE: Instant transition to Step 3
+                if (androidStep === 1) {
+                    addTermLine('[ JARVIS ] Neural link synchronized. Advancing...', 'hd');
+                    setTimeout(() => nextAndroidStep(), 800);
+                }
                 break;
             }
             case 'remote_log':
@@ -863,13 +915,47 @@ const connectSSE = (mode = 'setup') => {
                     const area = document.getElementById('android-input-area');
                     const text = document.getElementById('android-prompt-text');
                     const input = document.getElementById('android-answer');
+                    const choiceArea = document.getElementById('android-choices');
                     if (area && text && input) {
+                        // If choices were just shown (and not yet used), the prompt accompanies them
                         area.style.display = 'block';
                         text.textContent = data;
                         setTimeout(() => input.focus(), 100);
+
+                        // If we have a prompt and choices, update the choice label
+                        if (choiceArea && choiceArea.style.display === 'block') {
+                            const lbl = document.getElementById('android-choice-label');
+                            if (lbl) lbl.textContent = data.toUpperCase();
+                        }
                     }
                 }
                 break;
+
+            case 'remote_choice': {
+                const { options } = data;
+                if (androidStep === 2) {
+                    const choiceArea = document.getElementById('android-choices');
+                    const grid = document.getElementById('android-choice-grid');
+                    if (choiceArea && grid) {
+                        grid.innerHTML = '';
+                        options.forEach(opt => {
+                            const card = document.createElement('div');
+                            card.className = 'choice-card';
+                            card.innerHTML = `
+                                <div class="choice-num">Option ${opt.num}</div>
+                                <div class="choice-icon">${getChoiceIcon(opt.label)}</div>
+                                <div class="choice-label">${opt.label}</div>
+                            `;
+                            card.onclick = () => submitAndroidChoice(opt.num, opt.label);
+                            grid.appendChild(card);
+                        });
+                        choiceArea.style.display = 'block';
+                        // Keep input area visible too just in case
+                        document.getElementById('android-input-area').style.display = 'block';
+                    }
+                }
+                break;
+            }
 
             case 'onboard_error_line':
                 addOnboardLine('⚠ ' + data, 'warn');

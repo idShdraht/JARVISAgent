@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "instagram-private-api": "^1.45.3",
-    "mysql2": "^3.11.3"
+    "mysql2": "^3.11.3",
+    "sqlite3": "^5.1.7",
+    "axios": "^1.7.9"
   }
 }

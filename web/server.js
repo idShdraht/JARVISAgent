@@ -184,6 +184,14 @@ app.post('/api/android/link', ensureAuth, (req, res) => {
 // Worker (Termux) calls this to get pending commands
 app.get('/api/android/poll/:code', (req, res) => {
     const { code } = req.params;
+
+    // UI can call /api/android/poll/check to see if a link exists for the current user
+    if (code === 'check' && req.isAuthenticated()) {
+        const { userToCode } = require('./installer');
+        const activeCode = userToCode.get(req.user.id);
+        return res.json({ linked: !!activeCode, code: activeCode });
+    }
+
     const { getPendingCommand } = require('./installer');
     const cmd = getPendingCommand(code);
     res.json(cmd || { type: 'idle' });

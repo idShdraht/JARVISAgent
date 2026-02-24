@@ -159,11 +159,11 @@
                   </div>
                   <div class="step-item" id="astep-2">
                     <div class="step-dot">2</div>
-                    <div class="step-label">Copy</div>
+                    <div class="step-label">Link</div>
                   </div>
                   <div class="step-item" id="astep-3">
                     <div class="step-dot">3</div>
-                    <div class="step-label">Run</div>
+                    <div class="step-label">Mission</div>
                   </div>
                   <div class="step-item" id="astep-4">
                     <div class="step-dot">4</div>
@@ -172,126 +172,163 @@
                 </div>
 
                 <div id="android-step-content"></div>
-              </div>
 
-              <!-- PC Guide (Windows / Linux / Mac) -->
-              <div id="guide-pc" class="platform-guide" style="display:none">
-                <h2 id="pc-title">🖥️ PC Setup</h2>
-                <p class="subtitle">Click the button below. The installer will run silently — watch the progress here.
-                </p>
-
-                <div class="alert alert-info show" style="margin-bottom:24px">
-                  <div style="display:flex;gap:12px;align-items:center">
-                    <div style="font-size:20px">⚡</div>
-                    <div>
-                      <strong>One-Click Install Ready</strong><br>
-                      <span style="font-size:12px;opacity:0.8">We've detected your platform. Click below to start the
-                        automatic background setup.</span>
+                <!-- Green JARVIS Logo for Terminal -->
+                <div id="android-terminal-wrapper" style="display:none;margin-top:20px;">
+                  <div class="terminal-header"
+                    style="background:#111;padding:8px 12px;border-radius:8px 8px 0 0;border:1px solid var(--cy);border-bottom:none;display:flex;align-items:center;gap:10px;">
+                    <div style="display:flex;gap:5px;">
+                      <span style="width:10px;height:10px;background:#ff5f56;border-radius:50%"></span>
+                      <span style="width:10px;height:10px;background:#ffbd2e;border-radius:50%"></span>
+                      <span style="width:10px;height:10px;background:#27c93f;border-radius:50%"></span>
                     </div>
+                    <span style="font-family:var(--mono);font-size:11px;color:var(--cy);opacity:0.8">termux —
+                      jarvis@android</span>
                   </div>
-                </div>
-
-                <div style="display:flex;gap:12px;margin-bottom:24px;align-items:center">
-                  <button class="btn btn-gold btn-block" id="btn-install-pc" onclick="runPCInstall()"
-                    style="flex:2;margin:0">
-                    🚀 Start Automatic Install
-                  </button>
-                  <div id="install-status"
-                    style="display:none;align-items:center;gap:8px;font-size:12px;color:var(--cy);font-weight:600">
-                    <span class="spinner" style="width:14px;height:14px;border-width:2px;margin:0"></span>
-                    <span id="install-status-text">INITIALIZING</span>
-                  </div>
-                  <button class="btn btn-outline" id="btn-auth-only" onclick="startOnboarding()" style="flex:1">
-                    🔐 Auth Only
-                  </button>
-                </div>
-
-                <div id="terminal">
-                  <div id="terminal-lines">
-                    <div class="t-line t-sys">╔══════════════════════════════════════╗</div>
-                    <div class="t-line t-sys">║ JARVIS — Installation Terminal ║</div>
-                    <div class="t-line t-sys">╚══════════════════════════════════════╝</div>
-                    <div class="t-line t-info">Waiting for setup to start...</div>
-                    <span class="cursor"></span>
-                  </div>
-                </div>
-
-                <div id="install-done-banner" style="display:none;margin-top:20px;">
-                  <div class="alert alert-success show">
-                    ✔ JARVIS installed! Now configure it with the setup wizard below.
-                  </div>
-                  <button class="btn btn-primary btn-block" style="margin-top:12px" onclick="startOnboarding()">
-                    🤖 Launch Setup Wizard →
-                  </button>
                 </div>
               </div>
 
-              <!-- ════ ONBOARDING WIZARD ════ -->
-              <div id="guide-onboard" class="platform-guide" style="display:none">
-                <h2>🤖 JARVIS Setup Wizard</h2>
-                <p class="subtitle">Answer each question in the browser — JARVIS configures itself automatically.</p>
+              <!-- Choice cards for Android Bridge -->
+              <div id="android-choices"
+                style="display:none;margin-top:15px;background:rgba(0,243,255,0.02);padding:15px;border-radius:10px;border:1px dashed rgba(0,243,255,0.1)">
+                <div style="font-size:11px;color:var(--cy);margin-bottom:12px;text-align:center;letter-spacing:1px"
+                  id="android-choice-label">CHOOSE SYSTEM OPTION</div>
+                <div class="choice-grid" id="android-choice-grid"></div>
+              </div>
 
-                <!-- Live terminal output -->
-                <div id="onboard-terminal">
-                  <div id="onboard-lines">
-                    <div class="t-line t-sys">◆ Waiting for wizard to start...</div>
-                  </div>
-                </div>
-
-                <!-- Dynamic prompt input (text/password) -->
-                <div id="onboard-prompt-box">
-                  <div id="onboard-question">Enter your answer:</div>
-                  <div class="onboard-input-row">
-                    <input type="text" id="onboard-answer" placeholder="Type your answer here..." autocomplete="off"
-                      autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter') submitOnboardAnswer()" />
-                    <button class="btn btn-primary" style="width:auto;padding:0 20px" onclick="submitOnboardAnswer()"
-                      id="btn-onboard-submit">Send</button>
-                  </div>
-                  <p style="font-size:11px;color:var(--dim);margin-top:8px">Press Enter or click Send</p>
-                </div>
-
-                <!-- Choice cards (AI providers, channels, etc.) -->
-                <div id="onboard-choices">
-                  <div class="choice-question" id="choice-question-label">Choose an option:</div>
-                  <div class="choice-grid" id="choice-grid"></div>
-                </div>
-
-                <!-- Error + retry -->
-                <div id="onboard-error-banner">
-                  <div class="error-card">
-                    <div class="error-title">⚠ Something went wrong</div>
-                    <div class="error-msg" id="onboard-error-msg">An error occurred.</div>
-                    <div class="retry-actions">
-                      <button class="btn btn-primary" onclick="restartOnboarding()">🔄 Start Again</button>
-                      <button class="btn btn-outline" onclick="hideOnboardError()">Ignore &amp; Continue</button>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Success -->
-                <div id="onboard-success">
-                  <div class="success-ring">✔</div>
-                  <h2 style="font-size:22px;color:var(--gr);margin-bottom:12px">JARVIS is Ready!</h2>
-                  <p style="color:var(--dim);margin-bottom:20px">Setup complete. Launch JARVIS any time:</p>
-                  <code
-                    style="background:#020b14;padding:12px 28px;border-radius:8px;font-size:15px;color:var(--cy);display:inline-block">jarvis</code>
-                  <div class="chips" style="justify-content:center;margin-top:24px">
-                    <span class="chip">🤖 AI Configured ✔</span>
-                    <span class="chip">🔑 API Keys Saved ✔</span>
-                    <span class="chip">📡 Channels Set ✔</span>
-                  </div>
-                </div>
-
-                <div style="margin-top:20px">
-                  <button class="btn btn-outline" onclick="restartOnboarding()"
-                    style="font-size:12px;padding:8px 16px">🔄 Restart Wizard</button>
+              <div id="android-input-area"
+                style="display:none;background:rgba(0,243,255,0.05);padding:12px;border-radius:8px;border:1px solid var(--cy2);margin-top:10px">
+                <div style="font-size:11px;color:var(--cy);margin-bottom:8px">SYSTEM PROMPT: <span
+                    id="android-prompt-text">---</span></div>
+                <div style="display:flex;gap:8px">
+                  <input type="text" id="android-answer" placeholder="Type answer..."
+                    style="flex:1;background:#000;border:1px solid var(--cy2);color:#fff;padding:8px;border-radius:4px;font-family:var(--mono)"
+                    onkeydown="if(event.key==='Enter') submitAndroidAnswer()" />
+                  <button class="btn btn-primary" style="width:auto;padding:0 15px"
+                    onclick="submitAndroidAnswer()">SEND</button>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- PC Guide (Windows / Linux / Mac) -->
+          <div id="guide-pc" class="platform-guide" style="display:none">
+            <h2 id="pc-title">🖥️ PC Setup</h2>
+            <p class="subtitle">Click the button below. The installer will run silently — watch the progress here.
+            </p>
+
+            <div class="alert alert-info show" style="margin-bottom:24px">
+              <div style="display:flex;gap:12px;align-items:center">
+                <div style="font-size:20px">⚡</div>
+                <div>
+                  <strong>One-Click Install Ready</strong><br>
+                  <span style="font-size:12px;opacity:0.8">We've detected your platform. Click below to start the
+                    automatic background setup.</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:12px;margin-bottom:24px;align-items:center">
+              <button class="btn btn-gold btn-block" id="btn-install-pc" onclick="runPCInstall()"
+                style="flex:2;margin:0">
+                🚀 Start Automatic Install
+              </button>
+              <div id="install-status"
+                style="display:none;align-items:center;gap:8px;font-size:12px;color:var(--cy);font-weight:600">
+                <span class="spinner" style="width:14px;height:14px;border-width:2px;margin:0"></span>
+                <span id="install-status-text">INITIALIZING</span>
+              </div>
+              <button class="btn btn-outline" id="btn-auth-only" onclick="startOnboarding()" style="flex:1">
+                🔐 Auth Only
+              </button>
+            </div>
+
+            <div id="terminal">
+              <div id="terminal-lines">
+                <div class="t-line t-sys">╔══════════════════════════════════════╗</div>
+                <div class="t-line t-sys">║ JARVIS — Installation Terminal ║</div>
+                <div class="t-line t-sys">╚══════════════════════════════════════╝</div>
+                <div class="t-line t-info">Waiting for setup to start...</div>
+                <span class="cursor"></span>
+              </div>
+            </div>
+
+            <div id="install-done-banner" style="display:none;margin-top:20px;">
+              <div class="alert alert-success show">
+                ✔ JARVIS installed! Now configure it with the setup wizard below.
+              </div>
+              <button class="btn btn-primary btn-block" style="margin-top:12px" onclick="startOnboarding()">
+                🤖 Launch Setup Wizard →
+              </button>
+            </div>
+          </div>
+
+          <!-- ════ ONBOARDING WIZARD ════ -->
+          <div id="guide-onboard" class="platform-guide" style="display:none">
+            <h2>🤖 JARVIS Setup Wizard</h2>
+            <p class="subtitle">Answer each question in the browser — JARVIS configures itself automatically.</p>
+
+            <!-- Live terminal output -->
+            <div id="onboard-terminal">
+              <div id="onboard-lines">
+                <div class="t-line t-sys">◆ Waiting for wizard to start...</div>
+              </div>
+            </div>
+
+            <!-- Dynamic prompt input (text/password) -->
+            <div id="onboard-prompt-box">
+              <div id="onboard-question">Enter your answer:</div>
+              <div class="onboard-input-row">
+                <input type="text" id="onboard-answer" placeholder="Type your answer here..." autocomplete="off"
+                  autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter') submitOnboardAnswer()" />
+                <button class="btn btn-primary" style="width:auto;padding:0 20px" onclick="submitOnboardAnswer()"
+                  id="btn-onboard-submit">Send</button>
+              </div>
+              <p style="font-size:11px;color:var(--dim);margin-top:8px">Press Enter or click Send</p>
+            </div>
+
+            <!-- Choice cards (AI providers, channels, etc.) -->
+            <div id="onboard-choices">
+              <div class="choice-question" id="choice-question-label">Choose an option:</div>
+              <div class="choice-grid" id="choice-grid"></div>
+            </div>
+
+            <!-- Error + retry -->
+            <div id="onboard-error-banner">
+              <div class="error-card">
+                <div class="error-title">⚠ Something went wrong</div>
+                <div class="error-msg" id="onboard-error-msg">An error occurred.</div>
+                <div class="retry-actions">
+                  <button class="btn btn-primary" onclick="restartOnboarding()">🔄 Start Again</button>
+                  <button class="btn btn-outline" onclick="hideOnboardError()">Ignore &amp; Continue</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Success -->
+            <div id="onboard-success">
+              <div class="success-ring">✔</div>
+              <h2 style="font-size:22px;color:var(--gr);margin-bottom:12px">JARVIS is Ready!</h2>
+              <p style="color:var(--dim);margin-bottom:20px">Setup complete. Launch JARVIS any time:</p>
+              <code
+                style="background:#020b14;padding:12px 28px;border-radius:8px;font-size:15px;color:var(--cy);display:inline-block">jarvis</code>
+              <div class="chips" style="justify-content:center;margin-top:24px">
+                <span class="chip">🤖 AI Configured ✔</span>
+                <span class="chip">🔑 API Keys Saved ✔</span>
+                <span class="chip">📡 Channels Set ✔</span>
+              </div>
+            </div>
+
+            <div style="margin-top:20px">
+              <button class="btn btn-outline" onclick="restartOnboarding()" style="font-size:12px;padding:8px 16px">🔄
+                Restart Wizard</button>
             </div>
           </div>
         </div>
       </div>
     </div>
+  </div>
+  </div>
 
   </div><!-- #app -->
 
