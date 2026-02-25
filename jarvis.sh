@@ -72,8 +72,13 @@ if [[ "$*" == *"--bridge"* ]]; then
   echo "[ JARVIS ] REMOTE MISSION CONTROL ACTIVE [$BRIDGE_CODE]" >> "$JARVIS_TMP/jarvis_remote.log"
   
   # Start a log tailer in background to report all output
-  touch "$JARVIS_TMP/jarvis_remote.log"
-  echo "[ JARVIS ] REMOTE BRIDGE SYNCHRONIZED. STANDING BY..." >> "$JARVIS_TMP/jarvis_remote.log"
+  echo "[ JARVIS ] REMOTE BRIDGE SYNCHRONIZED. STANDING BY..." > "$JARVIS_TMP/jarvis_remote.log"
+  
+  # PREVENT FIFO HANG: opening a FIFO for reading blocks until there is a writer.
+  # We keep a dummy writer alive in the background.
+  ( while true; do sleep 100; done ) > "$JARVIS_FIFO" &
+  FIFO_WRITER_PID=$!
+  
   (
     tail -f "$JARVIS_TMP/jarvis_remote.log" | while read -r line; do
         REPORT_TYPE="log"
