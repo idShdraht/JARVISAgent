@@ -258,22 +258,28 @@ window.linkAndroidDevice = async () => {
 
             // Check if device is TRULY linked
             if (state.deviceLinked) {
-                clearInterval(pairingPoller);
+                console.log('[JARVIS] Device link confirmed via polling intercept.');
+
+                // Show the hidden status badge
                 const statusEl = document.getElementById('remote-active-status');
                 if (statusEl) statusEl.style.display = 'block';
 
+                // ENABLE THE BUTTON (Fallback)
                 const btnNext = document.getElementById('btn-android-next');
                 if (btnNext) {
-                    btnNext.innerHTML = '⚡ LINKED! INITIALIZING...';
-                    btnNext.classList.add('btn-success');
+                    btnNext.disabled = false;
+                    btnNext.style.opacity = '1';
+                    btnNext.style.background = 'var(--gr)';
+                    btnNext.style.cursor = 'pointer';
+                    btnNext.innerHTML = '⚡ LINKED! CONTINUE →';
                 }
 
                 // AUTO-ADVANCE: Jump straight to the mission logs
                 if (androidStep === 1) {
-                    console.log('[JARVIS] Device link confirmed via polling intercept.');
                     addTermLine('[ JARVIS ] Neural link synchronized. Advancing...', 'hd');
                     setTimeout(() => nextAndroidStep(), 1500);
                 }
+                clearInterval(pairingPoller);
             }
         }, 1500); // Faster polling (1.5s) for instant response
     }
@@ -431,7 +437,7 @@ const ANDROID_STEPS = [
     `,
         action: 'Finish Deployment →',
         onEnter: () => {
-            document.getElementById('android-terminal-wrapper').style.display = 'block';
+            document.getElementById('android-terminal').parentElement.style.display = 'block';
             runRemoteSetup();
         }
     },
@@ -911,6 +917,16 @@ const connectSSE = (mode = 'setup') => {
                 const status = document.getElementById('remote-active-status');
                 if (status) status.style.display = 'block';
                 addTermLine(`[BRIDGE] Remote device linked: ${data.deviceName} `, 'sys');
+
+                // ENABLE THE BUTTON (Fallback)
+                const btnNext = document.getElementById('btn-android-next');
+                if (btnNext) {
+                    btnNext.disabled = false;
+                    btnNext.style.opacity = '1';
+                    btnNext.style.background = 'var(--gr)';
+                    btnNext.style.cursor = 'pointer';
+                    btnNext.innerHTML = '⚡ LINKED! CONTINUE →';
+                }
 
                 // AUTO-ADVANCE: Instant transition to Step 3
                 if (androidStep === 1) {

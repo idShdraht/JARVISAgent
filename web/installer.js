@@ -378,7 +378,13 @@ const getPendingCommand = (code) => {
         sendSSE(session.userId, 'remote_linked', { code, deviceName: session.deviceName });
     }
 
-    return session.queue.shift() || { type: 'idle' };
+    const next = session.queue.shift();
+    if (next) {
+        console.log(`[JARVIS] Dispatching remote command to ${code}: ${next.command.slice(0, 50)}...`);
+        return next;
+    }
+
+    return { type: 'idle' };
 };
 
 const getSessionStatus = (code) => {
@@ -395,7 +401,12 @@ const pushRemoteCommand = (userId, payload) => {
     const code = userToCode.get(userId);
     const session = remoteSessions.get(code);
     if (!session) return false;
+
+    // Ensure type is 'command' if not specified
+    if (!payload.type) payload.type = 'command';
+
     session.queue.push(payload);
+    console.log(`[JARVIS] Command queued for user ${userId} (session ${code})`);
     return true;
 };
 
