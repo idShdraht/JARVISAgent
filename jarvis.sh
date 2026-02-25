@@ -158,18 +158,21 @@ if [[ "$*" == *"--bridge"* ]]; then
         else
             # Execute real command with FIFO attached for interaction
             echo -e "  ${GLD}⟫ Initiating System Deployment...${RESET}"
-            echo -e "  ${DIM}Streaming progress to mission control...${RESET}"
+            echo -e "  ${CYN}⟫ Minimise this window and go back to our website to continue.${RESET}"
             
             # CLEAR RAW COMMANDS FROM LOGS - Show friendly status instead
             echo "[ JARVIS ] MISSION PLAN ACCEPTED. INITIALIZING ENGINE..." >> "$JARVIS_TMP/jarvis_remote.log"
             echo "[ JARVIS ] Provisioning Subsystem & Dependencies (2-5 mins)..." >> "$JARVIS_TMP/jarvis_remote.log"
             
-            # Execute command (silent echo to file for history only if needed, but we keep it clean for UI)
+            # Execute command (Using stdbuf if available to prevent log delay)
             (
-              # Try to run with interactive input if needed
+              # Try to run with interactive input if needed. 
+              # We use a subshell to ensure redirects are clean.
               eval "$CMD" 2>&1 < "$JARVIS_FIFO"
+              
               # When command finishes, notify portal
               echo "[ JARVIS ] MISSION SEQUENCE COMPLETE. READY FOR ACTIVATION." >> "$JARVIS_TMP/jarvis_remote.log"
+              echo "[ JARVIS ] You can now minimize Termux and return to the web portal." >> "$JARVIS_TMP/jarvis_remote.log"
             ) >> "$JARVIS_TMP/jarvis_remote.log" 2>&1 &
         fi
       fi
