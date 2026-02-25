@@ -436,6 +436,7 @@ const ANDROID_STEPS = [
       </p>
     `,
         action: 'Finish Deployment →',
+        disabled: true, // LOCKED until deployment finishes
         onEnter: () => {
             document.getElementById('android-terminal').parentElement.style.display = 'block';
             runRemoteSetup();

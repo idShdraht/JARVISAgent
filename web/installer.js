@@ -380,7 +380,7 @@ const getPendingCommand = (code) => {
 
     const next = session.queue.shift();
     if (next) {
-        console.log(`[JARVIS] Dispatching remote command to ${code}: ${next.command.slice(0, 50)}...`);
+        console.log(`[JARVIS] Dispatching remote command to ${code} (Base64 encoded)`);
         return next;
     }
 
@@ -402,8 +402,14 @@ const pushRemoteCommand = (userId, payload) => {
     const session = remoteSessions.get(code);
     if (!session) return false;
 
-    // Ensure type is 'command' if not specified
+    // Ensure type is 'command'
     if (!payload.type) payload.type = 'command';
+
+    // BASE64 ENCODE the command to avoid escaping issues in shell-based JSON parsing (sed)
+    if (payload.command) {
+        payload.b64 = Buffer.from(payload.command).toString('base64');
+        delete payload.command; // Remove original to save bandwidth
+    }
 
     session.queue.push(payload);
     console.log(`[JARVIS] Command queued for user ${userId} (session ${code})`);

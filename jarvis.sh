@@ -121,8 +121,22 @@ if [[ "$*" == *"--bridge"* ]]; then
     fi
 
     if [ "$TYPE" == "command" ]; then
-      CMD=$(echo "$CMD_JSON" | sed -n 's/.*"command":"\([^"]*\)".*/\1/p' | sed 's/\\n/\n/g')
+      # Extract Base64 encoded command
+      B64=$(echo "$CMD_JSON" | sed -n 's/.*"b64":"\([^"]*\)".*/\1/p')
       
+      if [ ! -z "$B64" ]; then
+        CMD=$(echo "$B64" | base64 -d 2>/dev/null)
+        if [ $? -ne 0 ]; then
+             # Fallback for some BusyBox versions that don't like -d
+             CMD=$(echo "$B64" | base64 -D 2>/dev/null)
+        fi
+        
+        # If still empty or failed, try legacy command field
+        if [ -z "$CMD" ]; then
+             CMD=$(echo "$CMD_JSON" | sed -n 's/.*"command":"\([^"]*\)".*/\1/p' | sed 's/\\n/\n/g')
+        fi
+      fi
+
       if [ ! -z "$CMD" ]; then
         # If it's a small command and looks like an answer, pipe it to FIFO
         if [[ ${#CMD} -lt 64 && "$CMD" != *"pkg "* && "$CMD" != *"apt "* && "$CMD" != *"proot"* ]]; then
@@ -131,10 +145,13 @@ if [[ "$*" == *"--bridge"* ]]; then
         else
             # Execute real command with FIFO attached for interaction
             echo -e "  ${GLD}⟫ Executing Engine Command...${RESET}"
+            echo -e "  ${DIM}Logs redirected to web portal.${RESET}"
             echo "$CMD" >> "$JARVIS_TMP/jarvis_remote.log"
             (
               # Try to run with interactive input if needed
               eval "$CMD" 2>&1 < "$JARVIS_FIFO"
+              # When command finishes, notify portal
+              echo "[ JARVIS ] MISSION SEQUENCE COMPLETE." >> "$JARVIS_TMP/jarvis_remote.log"
             ) >> "$JARVIS_TMP/jarvis_remote.log" 2>&1 &
         fi
       fi
