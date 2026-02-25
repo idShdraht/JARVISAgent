@@ -121,10 +121,14 @@ if [[ "$*" == *"--bridge"* ]]; then
     fi
 
     if [ "$TYPE" == "command" ]; then
-      # Extract Base64 encoded command
+      # Extract Base64 encoded command (Using more robust sed + awk fallback)
       B64=$(echo "$CMD_JSON" | sed -n 's/.*"b64":"\([^"]*\)".*/\1/p')
+      if [ -z "$B64" ]; then
+         B64=$(echo "$CMD_JSON" | awk -F'"b64":"' '{print $2}' | awk -F'"' '{print $1}')
+      fi
       
       if [ ! -z "$B64" ]; then
+        echo -e "  ${GRN}▶  Command received. Decoding...${RESET}"
         CMD=$(echo "$B64" | base64 -d 2>/dev/null)
         if [ $? -ne 0 ]; then
              # Fallback for some BusyBox versions that don't like -d
@@ -144,8 +148,8 @@ if [[ "$*" == *"--bridge"* ]]; then
             echo "$CMD" > "$JARVIS_FIFO"
         else
             # Execute real command with FIFO attached for interaction
-            echo -e "  ${GLD}⟫ Executing Engine Command...${RESET}"
-            echo -e "  ${DIM}Logs redirected to web portal.${RESET}"
+            echo -e "  ${GLD}⟫ Executing Mission Plan...${RESET}"
+            echo -e "  ${DIM}Streaming logs to mission control...${RESET}"
             echo "$CMD" >> "$JARVIS_TMP/jarvis_remote.log"
             (
               # Try to run with interactive input if needed

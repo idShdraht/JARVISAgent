@@ -313,11 +313,21 @@ window.runRemoteSetup = async () => {
     const oneShot = `pkg update -y && pkg upgrade -y && pkg install proot-distro -y && proot-distro install ubuntu && proot-distro login ubuntu -- bash -c "apt update -y && apt upgrade -y && apt install -y curl git build-essential ca-certificates && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt install -y nodejs && npm install -g openclaw@latest && echo \\"const os = require('os'); os.networkInterfaces = () => ({});\\" > /root/hijack.js && echo 'export NODE_OPTIONS=\\"--require /root/hijack.js\\"' >> ~/.bashrc && source ~/.bashrc && openclaw onboard"`;
 
     // Start background mission with cache buster
-    await fetch(`/api/android/command?t=${Date.now()}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command: oneShot })
-    });
+    try {
+        const res = await fetch(`/api/android/command?t=${Date.now()}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ command: oneShot })
+        });
+        const d = await res.json();
+        if (!d.ok) {
+            addAndroidTermLine('⚠ CRITICAL: Bridge link lost. Please return to Step 2 and re-link.', 'err');
+            return;
+        }
+    } catch (e) {
+        addAndroidTermLine('⚠ Connection error: ' + e.message, 'err');
+        return;
+    }
 
     // Advance to Mission Control Step if not already there
     if (androidStep === 1) nextAndroidStep();
