@@ -239,6 +239,7 @@ app.post('/api/android/report/:code', (req, res) => {
 app.post('/api/android/command', ensureAuth, (req, res) => {
     const { command, args } = req.body;
     const { pushRemoteCommand } = require('./installer');
+    console.log(`[JARVIS] Incoming remote command request for user ${req.user.id}`);
     const ok = pushRemoteCommand(req.user.id, { command, args });
     res.json({ ok });
 });
