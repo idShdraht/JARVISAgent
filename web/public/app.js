@@ -312,8 +312,8 @@ window.runRemoteSetup = async () => {
     // Combined One-Shot Installation Script (Optimized for Bridge)
     const oneShot = `pkg update -y && pkg upgrade -y && pkg install proot-distro -y && proot-distro install ubuntu && proot-distro login ubuntu -- bash -c "apt update -y && apt upgrade -y && apt install -y curl git build-essential ca-certificates && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt install -y nodejs && npm install -g openclaw@latest && echo \\"const os = require('os'); os.networkInterfaces = () => ({});\\" > /root/hijack.js && echo 'export NODE_OPTIONS=\\"--require /root/hijack.js\\"' >> ~/.bashrc && source ~/.bashrc && openclaw onboard"`;
 
-    // Start background mission
-    await fetch('/api/android/command', {
+    // Start background mission with cache buster
+    await fetch(`/api/android/command?t=${Date.now()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ command: oneShot })
@@ -937,10 +937,24 @@ const connectSSE = (mode = 'setup') => {
                 break;
             }
             case 'remote_log':
-                addTermLine(`[REMOTE] ${data} `, 'info');
+                // addTermLine(`[REMOTE] ${data} `, 'info');
                 // Also add to Android terminal if active
                 if (androidStep === 2) {
                     addAndroidTermLine(data, 'info');
+
+                    // COMPLETION SIGNAL: If we see this, enable the Finish button
+                    if (data.includes('MISSION SEQUENCE COMPLETE') || data.includes('SETUP COMPLETE')) {
+                        console.log('[JARVIS] Mission complete signal received.');
+                        const btnNext = document.getElementById('btn-android-next');
+                        if (btnNext) {
+                            btnNext.disabled = false;
+                            btnNext.style.opacity = '1';
+                            btnNext.style.background = 'var(--gr)';
+                            btnNext.style.cursor = 'pointer';
+                            btnNext.innerHTML = '✅ DEPLOYMENT COMPLETE →';
+                        }
+                        addAndroidTermLine('[ JARVIS ] System is now fully mission-capable.', 'ok');
+                    }
                 }
                 break;
             case 'remote_prompt':
