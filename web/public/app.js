@@ -292,14 +292,36 @@ window.launchTermux = () => {
     // Termux Intent URI pattern
     const intent = `intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;component=com.termux/.TermuxActivity;end`;
 
-    // Copy to clipboard first
+    // CRITICAL: Launch intent IMMEDIATELY to preserve user gesture
+    // Many browsers block window.location changes in promises
+    setTimeout(() => {
+        window.location.href = intent;
+    }, 10);
+
+    // Copy to clipboard in parallel
     navigator.clipboard.writeText(cmd).then(() => {
-        showAlert('dash-alert', '📋 Command Auto-Copied! Opening Termux...', 'success');
-        // Slight delay to allow alert to be seen
-        setTimeout(() => {
-            window.location.href = intent;
-        }, 600);
+        showAlert('dash-alert', '📋 Command Copied & Opening Termux...', 'success');
+    }).catch(() => {
+        showAlert('dash-alert', '⚠ Could not auto-copy. Please copy manually.', 'error');
     });
+};
+
+window.checkLinkStatus = async () => {
+    const code = document.getElementById('pairing-code-display')?.textContent;
+    if (!code || code.includes('-')) return;
+
+    try {
+        const check = await fetch(`/api/android/poll/${code}?ui=true&t=${Date.now()}`);
+        const state = await check.json();
+        if (state.deviceLinked) {
+            addTermLine('[ JARVIS ] Link confirmed manually.', 'ok');
+            if (androidStep === 1) nextAndroidStep();
+        } else {
+            showAlert('dash-alert', '⏳ Awaiting Termux connection...', 'info');
+        }
+    } catch (e) {
+        console.error('Link check failed:', e);
+    }
 };
 
 window.runRemoteSetup = async () => {
@@ -407,6 +429,9 @@ const ANDROID_STEPS = [
                 <button class="btn btn-gold btn-block" id="btn-launch-termux" onclick="launchTermux()" style="margin:0;padding:14px">
                   ⚡ AUTO-LAUNCH TERMUX
                 </button>
+                <div style="font-size:10px;margin-top:5px;cursor:pointer;color:var(--cy);opacity:0.7;text-decoration:underline" onclick="checkLinkStatus()">
+                  Already pasted? Refresh link status ↻
+                </div>
                 <div style="font-size:9px;color:var(--dim)">Copies command & Opens Termux app</div>
               </div>
               
@@ -430,6 +455,12 @@ const ANDROID_STEPS = [
         title: 'Step 3 — Mission Control',
         content: `
       <p style="margin-bottom:16px">The JARVIS engine is deploying via One-Shot Installer. Follow the logs below.</p>
+      
+      <div style="text-align:right;margin-bottom:10px">
+        <button class="btn btn-outline" style="font-size:10px;padding:5px 10px;width:auto;opacity:0.5" onclick="runRemoteSetup()" id="btn-remote-setup">
+          ↺ RE-RUN DEPLOYMENT
+        </button>
+      </div>
       
       <!-- Terminal is now visible in the main UI wrapper -->
 
