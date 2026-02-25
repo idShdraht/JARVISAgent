@@ -224,6 +224,9 @@ window.linkAndroidDevice = async () => {
 
     const data = await res.json();
     if (data.ok) {
+        // MUST connect to SSE to receive the 'remote_linked' event push!
+        connectSSE('android');
+
         if (codeDisplay) {
             codeDisplay.textContent = data.pairingCode;
             codeDisplay.classList.add('pulse-gold');
@@ -249,8 +252,8 @@ window.linkAndroidDevice = async () => {
         // Start polling for link confirmation to auto-advance
         if (pairingPoller) clearInterval(pairingPoller);
         pairingPoller = setInterval(async () => {
-            // Add ui=true to distinguish browser check from device poll
-            const check = await fetch(`/api/android/poll/${data.pairingCode}?ui=true`);
+            // Add ui=true to distinguish browser check from device poll + cache buster
+            const check = await fetch(`/api/android/poll/${data.pairingCode}?ui=true&t=${Date.now()}`);
             const state = await check.json();
 
             // Check if device is TRULY linked
@@ -680,7 +683,7 @@ const addOnboardLine = (text, cls = 'ok') => {
     const lines = document.getElementById('onboard-lines');
     const term = document.getElementById('onboard-terminal');
     const line = document.createElement('div');
-    line.className = `t - line t - ${cls} `;
+    line.className = `t-line t-${cls}`;
     line.textContent = text;
     lines.appendChild(line);
     term.scrollTop = term.scrollHeight;
@@ -727,12 +730,12 @@ const showChoices = (options, question) => {
     options.forEach(({ num, label }) => {
         const card = document.createElement('div');
         card.className = 'choice-card';
-        card.id = `choice - ${num} `;
+        card.id = `choice-${num}`;
         card.innerHTML = `
-    < div class="choice-num" > Option ${num}</div >
-      <div class="choice-icon">${getChoiceIcon(label)}</div>
-      <div class="choice-label">${label}</div>
-`;
+            <div class="choice-num">Option ${num}</div>
+            <div class="choice-icon">${getChoiceIcon(label)}</div>
+            <div class="choice-label">${label}</div>
+        `;
         card.onclick = () => selectChoice(num, label, card);
         grid.appendChild(card);
     });
@@ -755,11 +758,10 @@ const selectChoice = async (num, label, cardEl) => {
     hidePrompt();
 
     // ─── Simulated Typing Effect ───
-    // This makes it feel like the UI is "auto-pasting" into the terminal
     const terminalLines = document.getElementById('onboard-lines');
     const inputLine = document.createElement('div');
     inputLine.className = 't-line t-sys';
-    inputLine.innerHTML = `< span style = "opacity:0.6" >▶ </span ><span class="typing-text"></span><span class="cursor" style="height:12px;width:6px"></span>`;
+    inputLine.innerHTML = `<span style="opacity:0.6">▶ </span><span class="typing-text"></span><span class="cursor" style="height:12px;width:6px"></span>`;
     terminalLines.appendChild(inputLine);
 
     const typingSpan = inputLine.querySelector('.typing-text');
@@ -809,7 +811,7 @@ window.submitOnboardAnswer = async () => {
     const isSecret = isSecretPrompt(document.getElementById('onboard-question').textContent || '');
     const displayText = isSecret ? '••••••••' : text;
 
-    inputLine.innerHTML = `< span style = "opacity:0.6" >▶ </span ><span class="typing-text"></span><span class="cursor" style="height:12px;width:6px"></span>`;
+    inputLine.innerHTML = `<span style="opacity:0.6">▶ </span><span class="typing-text"></span><span class="cursor" style="height:12px;width:6px"></span>`;
     terminalLines.appendChild(inputLine);
 
     const typingSpan = inputLine.querySelector('.typing-text');
