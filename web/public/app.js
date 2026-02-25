@@ -267,6 +267,7 @@ window.linkAndroidDevice = async () => {
 
                 // AUTO-ADVANCE: Jump straight to the mission logs
                 if (androidStep === 1) {
+                    console.log('[JARVIS] Device link confirmed via polling intercept.');
                     addTermLine('[ JARVIS ] Neural link synchronized. Advancing...', 'hd');
                     setTimeout(() => nextAndroidStep(), 1500);
                 }

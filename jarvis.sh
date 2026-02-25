@@ -69,6 +69,7 @@ if [[ "$*" == *"--bridge"* ]]; then
   mkfifo "$JARVIS_FIFO"
   
   echo -e "\033[38;5;48m[ JARVIS ] REMOTE MISSION CONTROL ACTIVE [$BRIDGE_CODE]\033[0m"
+  echo "[ JARVIS ] REMOTE MISSION CONTROL ACTIVE [$BRIDGE_CODE]" >> "$JARVIS_TMP/jarvis_remote.log"
   
   # Start a log tailer in background to report all output
   touch "$JARVIS_TMP/jarvis_remote.log"
@@ -90,25 +91,46 @@ if [[ "$*" == *"--bridge"* ]]; then
              "$PORTAL_URL/api/android/report/$BRIDGE_CODE" >/dev/null 2>&1
     done
   ) &
+  
+  PEER_CONFIRMED=0
 
   while true; do
-    CMD_JSON=$(curl -s "$PORTAL_URL/api/android/poll/$BRIDGE_CODE")
+    if [ $PEER_CONFIRMED -eq 0 ]; then
+       echo -ne "\r  ${CYN}●${RESET}  Polling mission control...   "
+    fi
     
+    CMD_JSON=$(curl -s --connect-timeout 5 "$PORTAL_URL/api/android/poll/$BRIDGE_CODE")
+    EXIT_CODE=$?
+    
+    if [ $EXIT_CODE -ne 0 ]; then
+        if [ $PEER_CONFIRMED -eq 0 ]; then
+            echo -e "\n  ${RED}⚠  Connection timeout. Retrying...${RESET}"
+        fi
+        sleep 2
+        continue
+    fi
+
     # Robust JSON parsing for BusyBox/Termux shells (avoiding -P)
     TYPE=$(echo "$CMD_JSON" | sed -n 's/.*"type":"\([^"]*\)".*/\1/p')
     [ -z "$TYPE" ] && TYPE="idle"
     
+    if [ $PEER_CONFIRMED -eq 0 ]; then
+        PEER_CONFIRMED=1
+        echo -e "\n  ${GRN}✔  Link confirmed by server.${RESET}"
+        echo -e "  ${DIM}Waiting for commands...${RESET}"
+    fi
+
     if [ "$TYPE" == "command" ]; then
       CMD=$(echo "$CMD_JSON" | sed -n 's/.*"command":"\([^"]*\)".*/\1/p' | sed 's/\\n/\n/g')
       
       if [ ! -z "$CMD" ]; then
         # If it's a small command and looks like an answer, pipe it to FIFO
         if [[ ${#CMD} -lt 64 && "$CMD" != *"pkg "* && "$CMD" != *"apt "* && "$CMD" != *"proot"* ]]; then
-            echo "⟫ Interaction: $CMD"
+            echo -e "  ${CYN}⟫ Interaction:${RESET} ${WHT}$CMD${RESET}"
             echo "$CMD" > "$JARVIS_FIFO"
         else
             # Execute real command with FIFO attached for interaction
-            echo "⟫ Executing Engine Command..."
+            echo -e "  ${GLD}⟫ Executing Engine Command...${RESET}"
             echo "$CMD" >> "$JARVIS_TMP/jarvis_remote.log"
             (
               # Try to run with interactive input if needed

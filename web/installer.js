@@ -405,6 +405,15 @@ const handleRemoteReport = (code, report) => {
     session.lastActive = Date.now();
     const { userId } = session;
 
+    // REDUNDANT LINK DETECTION: 
+    // If we get a report but didn't mark as linked yet, do it now.
+    // This handles cases where the poll might have blipped but report succeeded.
+    if (!session.deviceLinked) {
+        session.deviceLinked = true;
+        sendSSE(userId, 'remote_linked', { code, deviceName: session.deviceName });
+        console.log(`[JARVIS] Remote device ${code} linked via report redundancy.`);
+    }
+
     if (report.log) {
         sendSSE(userId, 'remote_log', report.log);
 
