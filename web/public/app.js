@@ -528,20 +528,23 @@ const renderAndroidStep = () => {
 
 window.startAndroidGuide = () => {
     selectedPlatform = 'android';
-    // If we're already linked (e.g. page reload), we can potentially skip or show status
-    // For now, reset to 0 but if we find linking in progress we could jump
     androidStep = 0;
+
+    // Connect SSE immediately to catch any background events (e.g. from previous refresh)
+    connectSSE('android');
+
     renderAndroidStep();
 
     // Check if a link already exists
-    fetch('/api/android/poll/check').then(r => r.json()).then(data => {
+    fetch(`/api/android/poll/check?t=${Date.now()}`).then(r => r.json()).then(data => {
         // Only jump if a code exists AND it's truly linked to a device
-        if (data.linked && androidStep < 2) {
-            // Final verification that device is actually active using the ui flag
-            fetch(`/api/android/poll/${data.code}?ui=true`).then(r => r.json()).then(status => {
-                if (status.deviceLinked) {
-                    console.log('[JARVIS] Device linked. Jumping to mission control.');
-                    androidStep = 2; // Jump to Mission Control
+        if (data.linked) {
+            // Further verify if device is active via polling state
+            fetch(`/api/android/poll/${data.code}?ui=true&t=${Date.now()}`).then(r => r.json()).then(status => {
+                if (status.deviceLinked && androidStep < 2) {
+                    console.log('[JARVIS] Active device session detected. Syncing UI...');
+                    // If we're already linked, jump to Step 3 (Mission Control)
+                    androidStep = 2;
                     renderAndroidStep();
                 }
             });

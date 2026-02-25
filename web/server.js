@@ -191,9 +191,15 @@ app.post('/api/onboard/stop', ensureAuth, (req, res) => {
 // Link a remote Termux session to this web portal
 app.post('/api/android/link', ensureAuth, (req, res) => {
     const { deviceName } = req.body;
-    const pairingCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const { addRemoteSession } = require('./installer');
-    addRemoteSession(req.user.id, pairingCode, deviceName || 'Android Device');
+    const { addRemoteSession, getCodeForUser } = require('./installer');
+
+    // REUSE existing code if available to avoid breaking Termux polls on refresh
+    let pairingCode = getCodeForUser(req.user.id);
+    if (!pairingCode) {
+        pairingCode = Math.floor(100000 + Math.random() * 900000).toString();
+        addRemoteSession(req.user.id, pairingCode, deviceName || 'Android Device');
+    }
+
     res.json({ ok: true, pairingCode });
 });
 

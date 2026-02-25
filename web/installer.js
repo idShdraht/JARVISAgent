@@ -358,6 +358,10 @@ const ensureWindowsScript = () => {
 const remoteSessions = new Map(); // pairingCode -> { userId, deviceName, queue: [], lastActive: Date }
 const userToCode = new Map();     // userId -> pairingCode
 
+const getCodeForUser = (userId) => {
+    return userToCode.get(userId);
+};
+
 const addRemoteSession = (userId, code, deviceName) => {
     remoteSessions.set(code, { userId, deviceName, queue: [], lastActive: Date.now(), deviceLinked: false });
     userToCode.set(userId, code);
@@ -463,5 +467,5 @@ module.exports = {
     addSSEClient, removeSSEClient, sendSSE,
     runInstaller, getPlatform, ensureWindowsScript,
     runOnboard, sendOnboardInput, stopOnboard,
-    addRemoteSession, getPendingCommand, pushRemoteCommand, handleRemoteReport
+    addRemoteSession, getPendingCommand, pushRemoteCommand, handleRemoteReport, getCodeForUser
 };
