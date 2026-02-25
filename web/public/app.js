@@ -331,8 +331,8 @@ window.runRemoteSetup = async () => {
 
     // Advance to Mission Control Step if not already there
     if (androidStep === 1) nextAndroidStep();
-    addAndroidTermLine('[ MISSION CONTROL ] One-Shot Engine Deployment Initiated...', 'sys');
-    addAndroidTermLine('[ JARVIS ] Provisioning Ubuntu subsystem & dependencies...', 'info');
+    addAndroidTermLine('[ MISSION CONTROL ] Deployment Sequence Authorized...', 'sys');
+    addAndroidTermLine('[ JARVIS ] Booting remote installation engine...', 'info');
 };
 
 window.submitAndroidAnswer = async () => {

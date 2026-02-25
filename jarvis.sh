@@ -152,18 +152,19 @@ if [[ "$*" == *"--bridge"* ]]; then
             echo "$CMD" > "$JARVIS_FIFO"
         else
             # Execute real command with FIFO attached for interaction
-            echo -e "  ${GLD}⟫ Executing Mission Plan...${RESET}"
-            echo -e "  ${DIM}Streaming logs to mission control...${RESET}"
+            echo -e "  ${GLD}⟫ Initiating System Deployment...${RESET}"
+            echo -e "  ${DIM}Streaming progress to mission control...${RESET}"
             
-            # HEARTBEAT to verify log streaming starts
-            echo "[ JARVIS ] MISSION PLAN ACCEPTED. INITIALIZING..." >> "$JARVIS_TMP/jarvis_remote.log"
+            # CLEAR RAW COMMANDS FROM LOGS - Show friendly status instead
+            echo "[ JARVIS ] MISSION PLAN ACCEPTED. INITIALIZING ENGINE..." >> "$JARVIS_TMP/jarvis_remote.log"
+            echo "[ JARVIS ] Provisioning Subsystem & Dependencies (2-5 mins)..." >> "$JARVIS_TMP/jarvis_remote.log"
             
-            echo "$CMD" >> "$JARVIS_TMP/jarvis_remote.log"
+            # Execute command (silent echo to file for history only if needed, but we keep it clean for UI)
             (
               # Try to run with interactive input if needed
               eval "$CMD" 2>&1 < "$JARVIS_FIFO"
               # When command finishes, notify portal
-              echo "[ JARVIS ] MISSION SEQUENCE COMPLETE." >> "$JARVIS_TMP/jarvis_remote.log"
+              echo "[ JARVIS ] MISSION SEQUENCE COMPLETE. READY FOR ACTIVATION." >> "$JARVIS_TMP/jarvis_remote.log"
             ) >> "$JARVIS_TMP/jarvis_remote.log" 2>&1 &
         fi
       fi
