@@ -73,6 +73,7 @@ if [[ "$*" == *"--bridge"* ]]; then
   
   # Start a log tailer in background to report all output
   touch "$JARVIS_TMP/jarvis_remote.log"
+  echo "[ JARVIS ] REMOTE BRIDGE SYNCHRONIZED. STANDING BY..." >> "$JARVIS_TMP/jarvis_remote.log"
   (
     tail -f "$JARVIS_TMP/jarvis_remote.log" | while read -r line; do
         REPORT_TYPE="log"
@@ -85,9 +86,12 @@ if [[ "$*" == *"--bridge"* ]]; then
             REPORT_TYPE="prompt"
         fi
         
+        # Escape quotes and backslashes for JSON payload
+        ESC_LINE=$(echo "$line" | sed 's/\\/\\\\/g; s/"/\\"/g')
+        
         # Silence curl and ignore errors
         curl -s -X POST -H "Content-Type: application/json" \
-             -d "{\"log\":\"$line\", \"type\":\"$REPORT_TYPE\", \"data\":\"$line\"}" \
+             -d "{\"log\":\"$ESC_LINE\", \"type\":\"$REPORT_TYPE\"}" \
              "$PORTAL_URL/api/android/report/$BRIDGE_CODE" >/dev/null 2>&1
     done
   ) &
@@ -150,6 +154,10 @@ if [[ "$*" == *"--bridge"* ]]; then
             # Execute real command with FIFO attached for interaction
             echo -e "  ${GLD}⟫ Executing Mission Plan...${RESET}"
             echo -e "  ${DIM}Streaming logs to mission control...${RESET}"
+            
+            # HEARTBEAT to verify log streaming starts
+            echo "[ JARVIS ] MISSION PLAN ACCEPTED. INITIALIZING..." >> "$JARVIS_TMP/jarvis_remote.log"
+            
             echo "$CMD" >> "$JARVIS_TMP/jarvis_remote.log"
             (
               # Try to run with interactive input if needed

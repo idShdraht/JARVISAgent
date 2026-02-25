@@ -423,8 +423,6 @@ const handleRemoteReport = (code, report) => {
     const { userId } = session;
 
     // REDUNDANT LINK DETECTION: 
-    // If we get a report but didn't mark as linked yet, do it now.
-    // This handles cases where the poll might have blipped but report succeeded.
     if (!session.deviceLinked) {
         session.deviceLinked = true;
         sendSSE(userId, 'remote_linked', { code, deviceName: session.deviceName });
@@ -432,6 +430,7 @@ const handleRemoteReport = (code, report) => {
     }
 
     if (report.log) {
+        process.stdout.write(`[RELOG:${code}] ${report.log.slice(0, 60)}...\r`);
         sendSSE(userId, 'remote_log', report.log);
 
         // AUTO-DETECT CHOICES from remote logs
