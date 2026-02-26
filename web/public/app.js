@@ -79,8 +79,11 @@ const populateDashboard = () => {
             card.style.boxShadow = '0 0 20px rgba(0, 243, 255, 0.2)';
         }
 
-        // AUTO-PILOT: If setup is not done, jump straight to the guide after a short delay
-        if (!currentUser.setupDone) {
+        if (currentUser.setupDone) {
+            document.getElementById('control-panel-banner').style.display = 'block';
+            document.getElementById('platform-section').style.display = 'none';
+        } else {
+            // AUTO-PILOT: If setup is not done, jump straight to the guide after a short delay
             setTimeout(() => {
                 if (detected === 'windows') window.startPCGuide();
                 else startAndroidGuide();
@@ -333,7 +336,7 @@ window.runRemoteSetup = async () => {
 
     // Combined One-Shot Installation Script (Optimized for Bridge & README Compliant)
     const host = window.location.origin;
-    const oneShot = `pkg update -y && pkg upgrade -y && pkg install proot-distro -y && proot-distro install ubuntu && proot-distro login ubuntu -- /bin/bash -i -c "apt update -y && apt upgrade -y && apt install -y curl git build-essential ca-certificates && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt install -y nodejs && npm install -g openclaw@latest && echo \\"const os = require('os'); os.networkInterfaces = () => ({});\\" > /root/hijack.js && echo 'export NODE_OPTIONS=\\"--require /root/hijack.js\\"' >> ~/.bashrc && echo 'alias jarvis=\\"openclaw\\"' >> ~/.bashrc && source ~/.bashrc && openclaw onboard"`;
+    const oneShot = `pkg update -y && pkg upgrade -y && pkg install proot-distro -y && proot-distro install ubuntu && proot-distro login ubuntu -- /bin/bash -i -c "export DEBIAN_FRONTEND=noninteractive; apt update -y && apt upgrade -y && apt install -y curl git build-essential ca-certificates && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt install -y nodejs && npm install -g openclaw@latest && echo \\"const os = require('os'); os.networkInterfaces = () => ({});\\" > /root/hijack.js && echo 'export NODE_OPTIONS=\\"--require /root/hijack.js\\"' >> ~/.bashrc && echo 'alias jarvis=\\"openclaw\\"' >> ~/.bashrc && source ~/.bashrc && openclaw onboard"`;
 
     // Start background mission with cache buster
     try {

@@ -84,11 +84,15 @@ if [[ "$*" == *"--bridge"* ]]; then
         REPORT_TYPE="log"
         # Advanced Prompt Detection Heuristic
         L_LOWER=$(echo "$line" | tr '[:upper:]' '[:lower:]')
-        if [[ "$line" == *"?"* || "$line" == *":"* || \
-              "$L_LOWER" == *"[y/n]"* || "$L_LOWER" == *"(y/n)"* || \
-              "$L_LOWER" == *"selection"* || "$L_LOWER" == *"password"* || \
-              "$L_LOWER" == *"enter "* || "$L_LOWER" == *"confirm"* ]]; then
+        if [[ "$line" == *"?"* ]] || [[ "$line" =~ :[[:space:]]*$ ]] || \
+           [[ "$L_LOWER" == *"[y/n]"* ]] || [[ "$L_LOWER" == *"(y/n)"* ]] || \
+           [[ "$L_LOWER" =~ (password|enter|confirm.*):?[[:space:]]*$ ]]; then
             REPORT_TYPE="prompt"
+        fi
+        
+        # Debconf/apt lines are never prompts
+        if [[ "$L_LOWER" == *"debconf:"* ]] || [[ "$L_LOWER" == *"dpkg:"* ]] || [[ "$L_LOWER" == *"fetched "* ]]; then
+            REPORT_TYPE="log"
         fi
         
         # Escape quotes and backslashes for JSON payload
@@ -345,12 +349,12 @@ export CLAWDBOT_PROFILE=jarvis
 export OPENCLAW_PROFILE=jarvis
 
 echo -e "\n  ${GLD}${BOLD}⟫ Installing base dependencies${RESET}\n"
-(apt update -y && apt upgrade -y && apt install -y curl git build-essential ca-certificates) \
+(export DEBIAN_FRONTEND=noninteractive; apt update -y && apt upgrade -y && apt install -y curl git build-essential ca-certificates) \
   > /tmp/jarvis_deps.log 2>&1 &
 spin "Installing build tools & certificates..."
 
 echo -e "\n  ${GLD}${BOLD}⟫ Installing Node.js 22${RESET}\n"
-(curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt install -y nodejs) \
+(export DEBIAN_FRONTEND=noninteractive; curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt install -y nodejs) \
   > /tmp/jarvis_node.log 2>&1 &
 spin "Deploying Node.js runtime..."
 
