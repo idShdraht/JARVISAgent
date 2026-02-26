@@ -220,27 +220,43 @@ app.post('/api/android/link', ensureAuth, async (req, res) => {
 
 
 // Worker (Termux) calls this to get pending commands
-app.get('/api/android/poll/:code', (req, res) => {
+app.get('/api/android/poll/:code', async (req, res) => {
     const { code } = req.params;
 
     // UI can call /api/android/poll/check to see if a link exists for the current user
     if (code === 'check' && req.isAuthenticated()) {
-        const { userToCode } = require('./installer');
-        const activeCode = userToCode.get(req.user.id);
+        const { userToCode, remoteSessions } = require('./installer');
+        let activeCode = userToCode.get(req.user.id);
+
+        // Restore from DB if not in memory (server just restarted)
+        if (!activeCode) {
+            activeCode = await db.loadPairingCode(req.user.id);
+            if (activeCode && !remoteSessions.has(activeCode)) {
+                const { addRemoteSession } = require('./installer');
+                // Don't await — just fire and forget to rebuild in memory
+                addRemoteSession(req.user.id, activeCode, 'Android Device').catch(() => { });
+            }
+        }
         return res.json({ linked: !!activeCode, code: activeCode });
     }
 
     const { getPendingCommand, getSessionStatus } = require('./installer');
 
-    // If request has a query param 'ui=true', it's a browser check, not a device poll
+    // If request has a query param 'ui=true', it's a browser status check, not a device poll
     if (req.query.ui === 'true') {
         const status = getSessionStatus(code);
-        return res.json({ type: 'status', ...status });
+        // Restore from DB if session not in memory yet
+        if (!status.exists) {
+            const session = await getPendingCommand(code); // triggers DB restore as side effect
+        }
+        return res.json({ type: 'status', ...getSessionStatus(code) });
     }
 
-    const cmd = getPendingCommand(code);
+    // ✅ CRITICAL: await the now-async getPendingCommand
+    const cmd = await getPendingCommand(code);
     res.json(cmd || { type: 'idle' });
 });
+
 
 // Worker posts results/logs back
 app.post('/api/android/report/:code', (req, res) => {

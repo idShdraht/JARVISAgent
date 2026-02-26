@@ -374,6 +374,7 @@ const addRemoteSession = async (userId, code, deviceName) => {
 
 const getPendingCommand = async (code) => {
     let session = remoteSessions.get(code);
+    const wasRestoredFromDB = !session;
 
     // SESSION RECOVERY: If the code is unknown (server restarted), try to restore from DB
     if (!session) {
@@ -391,20 +392,26 @@ const getPendingCommand = async (code) => {
         }
     }
 
-    if (!session) return null;
+    if (!session) return { type: 'idle' }; // Always return idle, never null
 
     // This is called by the actual DEVICE
     session.lastActive = Date.now();
 
-    // If this is the FIRST time the device polls, send the SSE event to the UI
+    // If this is the FIRST time the device polls after server restart,
+    // send SSE to UI so it shows ONLINE and auto-queue a wake command
     if (!session.deviceLinked) {
         session.deviceLinked = true;
         sendSSE(session.userId, 'remote_linked', { code, deviceName: session.deviceName });
+        // Auto-queue the wake command so JARVIS starts on the device immediately
+        if (wasRestoredFromDB) {
+            console.log(`[JARVIS] Auto-queuing wake command for restored session ${code}`);
+            session.queue.push({ type: 'command', command: 'proot-distro login ubuntu -- jarvis' });
+        }
     }
 
     const next = session.queue.shift();
     if (next) {
-        console.log(`[JARVIS] Dispatching remote command to ${code} (Base64 encoded)`);
+        console.log(`[JARVIS] Dispatching remote command to ${code}`);
         return next;
     }
 
@@ -487,6 +494,7 @@ module.exports = {
     addSSEClient, removeSSEClient, sendSSE,
     runInstaller, getPlatform, ensureWindowsScript,
     runOnboard, sendOnboardInput, stopOnboard,
-    addRemoteSession, getPendingCommand, pushRemoteCommand, handleRemoteReport, getCodeForUser,
+    addRemoteSession, getPendingCommand, getSessionStatus,
+    pushRemoteCommand, handleRemoteReport, getCodeForUser,
     remoteSessions, userToCode,
 };
