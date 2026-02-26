@@ -492,18 +492,40 @@ const ANDROID_STEPS = [
         content: `
       <div style="text-align:center;padding:20px 0">
         <div style="font-size:60px;margin-bottom:16px">🤖</div>
-        <h2 style="font-size:22px;margin-bottom:12px">Setup Complete!</h2>
-        <p style="color:var(--dim);margin-bottom:24px">
-          JARVIS is now active in your Termux Ubuntu environment.
-        </p>
-        <code style="background:#020b14;padding:12px 24px;border-radius:8px;font-size:14px;color:var(--cy);display:inline-block;border:1px solid var(--cy)">
-          jarvis
-        </code>
+        <h2 style="font-size:22px;margin-bottom:8px;color:var(--cy)">JARVIS is Online!</h2>
+        <p style="color:var(--dim);margin-bottom:28px">Setup complete. Your AI engine is active on this device.</p>
+
+        <a href="/control.html" style="
+          display:inline-flex;align-items:center;gap:12px;
+          background:linear-gradient(135deg,rgba(0,243,255,0.15),rgba(0,243,255,0.05));
+          border:2px solid var(--cy);
+          color:var(--cy);
+          text-decoration:none;
+          padding:18px 36px;
+          border-radius:12px;
+          font-size:18px;
+          font-weight:bold;
+          letter-spacing:1px;
+          box-shadow:0 0 30px rgba(0,243,255,0.2);
+          transition:all 0.3s;
+        " onmouseover="this.style.boxShadow='0 0 50px rgba(0,243,255,0.5)'" onmouseout="this.style.boxShadow='0 0 30px rgba(0,243,255,0.2)'">
+          <span style="font-size:28px">⚡</span>
+          Launch JARVIS Control Panel
+          <span style="font-size:20px">→</span>
+        </a>
+
+        <p style="margin-top:20px;font-size:12px;color:var(--dim)">You can always return to this panel from the dashboard.</p>
+
+        <div class="chips" style="justify-content:center;margin-top:24px">
+          <span class="chip">🤖 AI Active ✔</span>
+          <span class="chip">🔑 Keys Saved ✔</span>
+          <span class="chip">📡 Bridge Live ✔</span>
+        </div>
       </div>
     `,
         action: null,
         onEnter: () => {
-            // Hide terminal on success? Or keep it? The user likes it, so keep it.
+            markSetupDone('android');
         }
     },
 ];
@@ -985,40 +1007,28 @@ const connectSSE = (mode = 'setup') => {
                 break;
             }
             case 'remote_log':
-                // addTermLine(`[REMOTE] ${data} `, 'info');
-                // Also add to Android terminal if active
                 if (androidStep === 2) {
                     addAndroidTermLine(data, 'info');
-
-                    // COMPLETION SIGNAL: If we see this, enable the Finish button
-                    if (data.includes('MISSION SEQUENCE COMPLETE') || data.includes('SETUP COMPLETE')) {
-                        console.log('[JARVIS] Mission complete signal received.');
-                        const btnNext = document.getElementById('btn-android-next');
-                        if (btnNext) {
-                            btnNext.disabled = false;
-                            btnNext.style.opacity = '1';
-                            btnNext.style.background = 'var(--gr)';
-                            btnNext.style.cursor = 'pointer';
-                            btnNext.innerHTML = '✅ DEPLOYMENT COMPLETE →';
-                        }
+                    // COMPLETION SIGNAL: Auto-advance to Control Panel step
+                    if (data.includes('MISSION SEQUENCE COMPLETE') || data.includes('SETUP COMPLETE') || data.includes('ready for activation')) {
+                        console.log('[JARVIS] Mission complete signal received. Showing Control Panel.');
                         addAndroidTermLine('[ JARVIS ] System is now fully mission-capable.', 'ok');
+                        addAndroidTermLine('[ JARVIS ] Launching Control Panel...', 'hd');
+                        setTimeout(() => nextAndroidStep(), 2000);
                     }
                 }
                 break;
+
             case 'remote_prompt':
-                // Show prompt in Android UI
                 if (androidStep === 2) {
                     const area = document.getElementById('android-input-area');
-                    const text = document.getElementById('android-prompt-text');
-                    const input = document.getElementById('android-answer');
+                    const promptTextEl = document.getElementById('android-prompt-text');
+                    const answerInput = document.getElementById('android-answer');
                     const choiceArea = document.getElementById('android-choices');
-                    if (area && text && input) {
-                        // If choices were just shown (and not yet used), the prompt accompanies them
+                    if (area && promptTextEl && answerInput) {
                         area.style.display = 'block';
-                        text.textContent = data;
-                        setTimeout(() => input.focus(), 100);
-
-                        // If we have a prompt and choices, update the choice label
+                        promptTextEl.textContent = data;
+                        setTimeout(() => answerInput.focus(), 100);
                         if (choiceArea && choiceArea.style.display === 'block') {
                             const lbl = document.getElementById('android-choice-label');
                             if (lbl) lbl.textContent = data.toUpperCase();
@@ -1028,13 +1038,13 @@ const connectSSE = (mode = 'setup') => {
                 break;
 
             case 'remote_choice': {
-                const { options } = data;
+                const { options: remoteOpts } = data;
                 if (androidStep === 2) {
                     const choiceArea = document.getElementById('android-choices');
                     const grid = document.getElementById('android-choice-grid');
                     if (choiceArea && grid) {
                         grid.innerHTML = '';
-                        options.forEach(opt => {
+                        remoteOpts.forEach(opt => {
                             const card = document.createElement('div');
                             card.className = 'choice-card';
                             card.innerHTML = `
@@ -1046,8 +1056,6 @@ const connectSSE = (mode = 'setup') => {
                             grid.appendChild(card);
                         });
                         choiceArea.style.display = 'block';
-                        // Keep input area visible too just in case
-                        document.getElementById('android-input-area').style.display = 'block';
                     }
                 }
                 break;
@@ -1059,10 +1067,10 @@ const connectSSE = (mode = 'setup') => {
                 break;
 
             case 'choice': {
-                const { options } = data;
-                lastChoiceOptions = options;
+                const { options: onboardOpts } = data;
+                lastChoiceOptions = onboardOpts;
                 const q = lastOnboardLogLine || 'Choose an option:';
-                showChoices(options, q);
+                showChoices(onboardOpts, q);
                 break;
             }
 
@@ -1100,6 +1108,7 @@ const connectSSE = (mode = 'setup') => {
         if (mode === 'setup') addTermLine('[info] Synchronizing with installer...', 'info');
     };
 };
+
 
 // ─── Start onboarding ──────────────────────────────────
 window.startOnboarding = async () => {
