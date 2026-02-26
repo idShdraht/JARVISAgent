@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JARVIS — Channels</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #0d1117;
+            --bg2: #161b22;
+            --bg3: #21262d;
+            --cy: #58a6ff;
+            --cy2: #388bfd;
+            --gr: #3fb950;
+            --dim: #8b949e;
+            --border: #30363d;
+            --red: #f85149;
+            --gold: #d29922;
+            --pu: #a371f7;
+        }
+
+        html,
+        body {
+            height: 100%;
+            background: var(--bg);
+            color: #e6edf3;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .app {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            height: 100vh;
+        }
+
+        .sidebar {
+            background: var(--bg2);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            gap: 4px;
+        }
+
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 4px 4px 16px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 12px;
+        }
+
+        .logo-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #388bfd, #1a7fbb);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 15px;
+            color: #fff;
+        }
+
+        .logo-name {
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .sidebar-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--dim);
+            padding: 8px 8px 4px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--dim);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s;
+        }
+
+        .nav-item:hover {
+            background: var(--bg3);
+            color: #e6edf3;
+        }
+
+        .nav-item.active {
+            background: rgba(88, 166, 255, 0.1);
+            color: var(--cy);
+        }
+
+        .nav-item .icon {
+            font-size: 14px;
+            width: 18px;
+            text-align: center;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px;
+        }
+
+        .page-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .page-sub {
+            font-size: 13px;
+            color: var(--dim);
+            margin-bottom: 32px;
+        }
+
+        /* Channel Cards Grid */
+        .channels-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+        }
+
+        .channel-card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            transition: border-color 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .channel-card:hover {
+            border-color: var(--cy);
+        }
+
+        .channel-card.linked {
+            border-color: var(--gr);
+        }
+
+        .channel-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .channel-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .channel-logo {
+            font-size: 28px;
+        }
+
+        .channel-name {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .channel-desc {
+            font-size: 12px;
+            color: var(--dim);
+            margin-top: 2px;
+        }
+
+        .badge {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            padding: 3px 8px;
+            border-radius: 20px;
+            text-transform: uppercase;
+        }
+
+        .badge-online {
+            background: rgba(63, 185, 80, 0.15);
+            color: var(--gr);
+            border: 1px solid var(--gr);
+        }
+
+        .badge-offline {
+            background: rgba(248, 81, 73, 0.15);
+            color: var(--red);
+            border: 1px solid var(--red);
+        }
+
+        .badge-na {
+            background: rgba(139, 148, 158, 0.1);
+            color: var(--dim);
+            border: 1px solid var(--border);
+        }
+
+        .channel-body {
+            font-size: 12px;
+            color: var(--dim);
+        }
+
+        .channel-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-primary {
+            background: var(--cy2);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: var(--cy);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--dim);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--cy);
+            color: var(--cy);
+            background: rgba(88, 166, 255, 0.05);
+        }
+
+        .btn-danger {
+            background: rgba(248, 81, 73, 0.1);
+            color: var(--red);
+            border: 1px solid rgba(248, 81, 73, 0.3);
+        }
+
+        .btn-danger:hover {
+            background: rgba(248, 81, 73, 0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* Skills Section */
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 32px 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 10px;
+        }
+
+        .skill-card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            transition: all 0.15s;
+        }
+
+        .skill-card:hover {
+            border-color: var(--pu);
+        }
+
+        .skill-card .skill-icon {
+            font-size: 20px;
+        }
+
+        .skill-status {
+            font-size: 10px;
+            color: var(--gr);
+            margin-top: 2px;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .modal-overlay.open {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            width: 460px;
+            max-width: 95vw;
+        }
+
+        .modal h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .modal p {
+            font-size: 13px;
+            color: var(--dim);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .modal input {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            color: #e6edf3;
+            font-size: 13px;
+            font-family: 'JetBrains Mono', monospace;
+            outline: none;
+            margin-bottom: 16px;
+            transition: border-color 0.2s;
+        }
+
+        .modal input:focus {
+            border-color: var(--cy);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            background: none;
+            border: none;
+            color: var(--dim);
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        /* QR Area */
+        #qr-area {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        #qr-area canvas {
+            border: 4px solid #fff;
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        .qr-hint {
+            font-size: 12px;
+            color: var(--dim);
+            margin-top: 10px;
+        }
+
+        .log-stream {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--gr);
+            height: 100px;
+            overflow-y: auto;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <div class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">J</div>
+                <div class="logo-name">JARVIS</div>
+            </div>
+            <div class="sidebar-label">Menu</div>
+            <a href="/control.html" class="nav-item"><span class="icon">💬</span> Chat</a>
+            <a href="/channels.html" class="nav-item active"><span class="icon">📡</span> Channels</a>
+            <div class="sidebar-label" style="margin-top:8px">Settings</div>
+            <a href="#skills" class="nav-item"><span class="icon">⚡</span> Skills</a>
+            <div class="sidebar-footer">
+                <a href="/" class="nav-item"><span class="icon">←</span> Dashboard</a>
+            </div>
+        </div>
+
+        <div class="main">
+            <div class="page-title">📡 Channels</div>
+            <div class="page-sub">Connect JARVIS to your messaging apps. Once linked, JARVIS replies on your behalf.
+            </div>
+
+            <div class="channels-grid" id="channels-grid">
+                <!-- Populated by JS -->
+            </div>
+
+            <div class="section-title" id="skills">⚡ Installed Skills</div>
+            <div class="skills-grid" id="skills-grid">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Token Modal -->
+    <div class="modal-overlay" id="token-modal">
+        <div class="modal" style="position:relative">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <h3 id="modal-title">Link Channel</h3>
+            <p id="modal-desc">Enter your API token to connect this channel.</p>
+            <input type="text" id="modal-token" placeholder="Paste token here..." />
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" id="modal-submit" onclick="submitToken()">Connect</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- WhatsApp QR Modal -->
+    <div class="modal-overlay" id="qr-modal">
+        <div class="modal" style="position:relative; width:480px">
+            <button class="modal-close" onclick="closeQrModal()">×</button>
+            <h3>📱 Link WhatsApp</h3>
+            <p>A QR code will appear below. Open WhatsApp on your phone → Linked Devices → Link a Device → scan.</p>
+            <div id="qr-area">
+                <div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--dim)">
+                    <div>⏳ Requesting QR from device...</div>
+                </div>
+            </div>
+            <div class="log-stream" id="qr-log">Initializing WhatsApp bridge...</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="/channels.js"></script>
+</body>
+
+</html>

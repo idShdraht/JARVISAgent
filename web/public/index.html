@@ -109,19 +109,25 @@
 
         <div id="dash-alert" class="alert"></div>
 
-        <!-- Control Panel Banner (Visible when setup is done) -->
         <div id="control-panel-banner"
           style="display:none; margin-bottom: 32px; background: rgba(0,243,255,0.05); border: 1px solid var(--cy); padding: 24px; border-radius: 12px; text-align: center;">
           <div style="font-size: 32px; margin-bottom: 12px;">🤖</div>
-          <h2 style="color: var(--cy); margin-bottom: 8px;">JARVIS Control Panel</h2>
-          <p style="color: var(--dim); margin-bottom: 20px;">System is online. You can now control JARVIS remotely.</p>
-          <a href="/control.html" class="btn btn-primary"
-            style="display: inline-block; padding: 12px 32px; font-weight: bold; font-size: 16px;">Launch Control Panel
-            ⚡</a>
+          <h2 style="color: var(--cy); margin-bottom: 8px;">JARVIS is Online</h2>
+          <p style="color: var(--dim); margin-bottom: 20px;">Your AI assistant is running. Chat with JARVIS or connect
+            your messaging apps.</p>
+          <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+            <a href="/control.html" class="btn btn-primary"
+              style="display: inline-block; padding: 12px 28px; font-weight: bold; font-size: 15px;">💬 Chat with
+              JARVIS</a>
+            <a href="/channels.html" class="btn btn-outline"
+              style="display: inline-block; padding: 12px 28px; font-weight: bold; font-size: 15px; border-color: var(--cy); color: var(--cy);">📡
+              Link Channels</a>
+          </div>
           <p style="margin-top: 16px; font-size: 11px; color: var(--dim); cursor: pointer; text-decoration: underline;"
             onclick="document.getElementById('platform-section').style.display='block'; document.getElementById('control-panel-banner').style.display='none';">
             Setup another device instead</p>
         </div>
+
 
         <!-- Platform choice -->
         <div id="platform-section">
