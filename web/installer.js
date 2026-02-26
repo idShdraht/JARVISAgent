@@ -9,6 +9,7 @@ const { spawn } = require('child_process');
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
+const db = require('./db');
 
 // ─── Per-user SSE client registry ─────────────────────
 const sseClients = new Map(); // userId → Set<res>
@@ -362,15 +363,34 @@ const getCodeForUser = (userId) => {
     return userToCode.get(userId);
 };
 
-const addRemoteSession = (userId, code, deviceName) => {
+const addRemoteSession = async (userId, code, deviceName) => {
     remoteSessions.set(code, { userId, deviceName, queue: [], lastActive: Date.now(), deviceLinked: false });
     userToCode.set(userId, code);
-    // DO NOT send remote_linked SSE yet! 
+    // Persist to DB so session survives server restarts
+    try { await db.savePairingCode(userId, code); } catch (e) { console.warn('[JARVIS] Could not persist pairing code:', e.message); }
+    // DO NOT send remote_linked SSE yet!
     // We wait until the real device actually polls.
 };
 
-const getPendingCommand = (code) => {
-    const session = remoteSessions.get(code);
+const getPendingCommand = async (code) => {
+    let session = remoteSessions.get(code);
+
+    // SESSION RECOVERY: If the code is unknown (server restarted), try to restore from DB
+    if (!session) {
+        try {
+            const rows = await db.query('SELECT id FROM jarvis_users WHERE pairing_code = ? LIMIT 1', [code]);
+            if (rows && rows[0]) {
+                const userId = rows[0].id;
+                console.log(`[JARVIS] Restoring session for code ${code} from DB (user ${userId})`);
+                remoteSessions.set(code, { userId, deviceName: 'Android Device', queue: [], lastActive: Date.now(), deviceLinked: false });
+                userToCode.set(userId, code);
+                session = remoteSessions.get(code);
+            }
+        } catch (e) {
+            console.warn('[JARVIS] Session restore failed:', e.message);
+        }
+    }
+
     if (!session) return null;
 
     // This is called by the actual DEVICE
@@ -467,5 +487,6 @@ module.exports = {
     addSSEClient, removeSSEClient, sendSSE,
     runInstaller, getPlatform, ensureWindowsScript,
     runOnboard, sendOnboardInput, stopOnboard,
-    addRemoteSession, getPendingCommand, pushRemoteCommand, handleRemoteReport, getCodeForUser
+    addRemoteSession, getPendingCommand, pushRemoteCommand, handleRemoteReport, getCodeForUser,
+    remoteSessions, userToCode,
 };

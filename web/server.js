@@ -188,20 +188,36 @@ app.post('/api/onboard/stop', ensureAuth, (req, res) => {
 });
 
 // ─── Remote Android Bridge ─────────────────────────────
-// Link a remote Termux session to this web portal
-app.post('/api/android/link', ensureAuth, (req, res) => {
+app.post('/api/android/link', ensureAuth, async (req, res) => {
     const { deviceName } = req.body;
     const { addRemoteSession, getCodeForUser } = require('./installer');
 
-    // REUSE existing code if available to avoid breaking Termux polls on refresh
+    // 1. Check in-memory first (fastest path)
     let pairingCode = getCodeForUser(req.user.id);
+
+    // 2. If not in memory, try to restore from DB (survives redeploys)
+    if (!pairingCode) {
+        pairingCode = await db.loadPairingCode(req.user.id);
+        if (pairingCode) {
+            // Rebuild in-memory session from DB so Termux doesn't need to re-pair
+            console.log(`[JARVIS] Restored pairing code ${pairingCode} from DB for user ${req.user.id}`);
+            const { remoteSessions, userToCode } = require('./installer');
+            if (!remoteSessions.has(pairingCode)) {
+                remoteSessions.set(pairingCode, { userId: req.user.id, deviceName: deviceName || 'Android Device', queue: [], lastActive: Date.now(), deviceLinked: false });
+                userToCode.set(req.user.id, pairingCode);
+            }
+        }
+    }
+
+    // 3. Generate a fresh code only if none exists
     if (!pairingCode) {
         pairingCode = Math.floor(100000 + Math.random() * 900000).toString();
-        addRemoteSession(req.user.id, pairingCode, deviceName || 'Android Device');
+        await addRemoteSession(req.user.id, pairingCode, deviceName || 'Android Device');
     }
 
     res.json({ ok: true, pairingCode });
 });
+
 
 // Worker (Termux) calls this to get pending commands
 app.get('/api/android/poll/:code', (req, res) => {

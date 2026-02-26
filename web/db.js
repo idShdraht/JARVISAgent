@@ -70,10 +70,13 @@ const init = async () => {
       avatar_url   TEXT,
       platform     VARCHAR(50) DEFAULT 'unknown',
       setup_done   TINYINT DEFAULT 0,
+      pairing_code VARCHAR(20) DEFAULT NULL,
       created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `);
+    // Add pairing_code column if upgrading from older schema
+    await pool.execute(`ALTER TABLE jarvis_users ADD COLUMN IF NOT EXISTS pairing_code VARCHAR(20) DEFAULT NULL`);
     await pool.execute(`
     CREATE TABLE IF NOT EXISTS jarvis_sessions (
       id         INT AUTO_INCREMENT PRIMARY KEY,
@@ -158,8 +161,28 @@ const logSession = (userId, event, detail, platform) => {
     ).catch(() => { });
 };
 
+// ─── Save / load pairing code ──────────────────────────
+const savePairingCode = async (userId, code) => {
+    if (!pool) {
+        const u = localFindById(userId);
+        if (u) u.pairing_code = code;
+        return;
+    }
+    await query('UPDATE jarvis_users SET pairing_code = ? WHERE id = ?', [code, userId]);
+};
+
+const loadPairingCode = async (userId) => {
+    if (!pool) {
+        const u = localFindById(userId);
+        return u?.pairing_code || null;
+    }
+    const r = await query('SELECT pairing_code FROM jarvis_users WHERE id = ? LIMIT 1', [userId]);
+    return r[0]?.pairing_code || null;
+};
+
 module.exports = {
     init, query, findUserByGoogleId, findUserByEmail, findUserById,
     upsertGoogleUser, setPassword, markSetupDone, logSession,
+    savePairingCode, loadPairingCode,
     isLocalMode: () => !pool,
 };
