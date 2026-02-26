@@ -2,168 +2,224 @@
 
 let currentUser = null;
 let deviceCode = null;
+let currentGroupEl = null;
+let thinkingEl = null;
 
+// ─── Init ──────────────────────────────────────────────
 const init = async () => {
-    // Show a loading state while we fetch user info
-    addMsg('Authenticating with JARVIS portal...', 'sys');
+    addSys('Authenticating with JARVIS portal...');
 
     let me;
     try {
         const res = await fetch('/api/me');
         if (!res.ok) {
-            // Not logged in
-            addMsg('Session expired. Redirecting to login...', 'sys');
+            addSys('Session expired. Redirecting...');
             setTimeout(() => { window.location.href = '/'; }, 1500);
             return;
         }
         me = await res.json();
     } catch (e) {
-        addMsg('Network error: ' + e.message + '. Check your connection.', 'sys');
-        return; // Don't redirect — just show the error in the UI
+        addSys('Network error: ' + e.message);
+        return;
     }
 
     currentUser = me;
-    document.getElementById('device-email').textContent = currentUser.email;
 
-    // Fetch pairing code — works whether or not setupDone is flagged in DB
+    // Load pairing code — from DB if needed
     let data = { linked: false };
     try {
-        const check = await fetch(`/api/android/poll/check?t=${Date.now()}`);
-        data = await check.json();
-    } catch { /* bridge might not be available yet */ }
-
-    // Always enable input so user can send even if device is sleeping
-    document.getElementById('chat-input').disabled = false;
-    document.getElementById('chat-send-btn').disabled = false;
+        const r = await fetch(`/api/android/poll/check?t=${Date.now()}`);
+        data = await r.json();
+    } catch { }
 
     if (data.linked) {
         deviceCode = data.code;
-        document.getElementById('device-code').textContent = deviceCode;
-
-        // Connect to SSE for logs
+        setStatus('connecting', 'Linked', 'Checking if device is online...');
         connectSSE();
-
-        // Check if device is alive
         checkDeviceStatus();
         setInterval(checkDeviceStatus, 5000);
     } else {
-        addMsg('No active device link found. Go back to the Dashboard, complete setup, and return here.', 'sys');
-        document.getElementById('conn-status').className = 'status-badge offline';
-        document.getElementById('conn-text').textContent = 'NO LINK';
-        document.querySelector('.status-indicator').classList.remove('pulse');
+        setStatus('offline', 'No Device', 'Complete setup first');
+        addSys('No active device link found. Return to the Dashboard to complete Android setup.');
     }
+};
+
+// ─── Status ────────────────────────────────────────────
+const setStatus = (state, text, sub) => {
+    const dot = document.getElementById('status-dot');
+    const txt = document.getElementById('status-text');
+    const sub2 = document.getElementById('status-sub');
+    dot.className = 'dot ' + state;
+    txt.textContent = text;
+    if (sub2) sub2.textContent = sub || '';
 };
 
 const checkDeviceStatus = async () => {
     if (!deviceCode) return;
     try {
         const res = await fetch(`/api/android/poll/${deviceCode}?ui=true&t=${Date.now()}`);
-        const status = await res.json();
-        const badge = document.getElementById('conn-status');
-        const text = document.getElementById('conn-text');
-        const ind = badge.querySelector('.status-indicator');
-
-        if (status.deviceLinked && (Date.now() - status.lastActive < 30000)) {
-            badge.className = 'status-badge';
-            text.textContent = 'ONLINE';
-            ind.classList.remove('pulse');
-            document.getElementById('chat-input').disabled = false;
-            document.getElementById('chat-send-btn').disabled = false;
+        const s = await res.json();
+        if (s.deviceLinked && (Date.now() - s.lastActive < 30000)) {
+            setStatus('online', 'Online', 'Device is responding');
         } else {
-            badge.className = 'status-badge offline';
-            text.textContent = 'AWAY / SLEEPING';
-            ind.classList.add('pulse');
-            // Allow input anyway in case it wakes up
-            document.getElementById('chat-input').disabled = false;
-            document.getElementById('chat-send-btn').disabled = false;
+            setStatus('connecting', 'Away', 'Device may be sleeping');
         }
-    } catch (e) {
-        console.error(e);
-    }
+    } catch { }
 };
 
-let eventSource = null;
+// ─── SSE from server ───────────────────────────────────
+let es = null;
 
 const connectSSE = () => {
-    if (eventSource) return;
-    eventSource = new EventSource('/api/setup/sse');
+    if (es) return;
+    es = new EventSource('/api/setup/sse');
 
-    eventSource.onmessage = (e) => {
+    es.onmessage = (e) => {
         try {
             const { type, data } = JSON.parse(e.data);
             if (type === 'remote_log') {
-                if (data.includes('debconf:') || data.includes('dpkg:') || data.trim() === '') return;
-
-                // Animate stripping ANSI colors and checking for prompts
                 const clean = data.replace(/\x1b\[[0-9;]*[mGKHF]/g, '').trim();
-                if (clean) addMsg(clean, 'jarvis');
+                // Skip installation noise
+                if (!clean || clean.startsWith('debconf:') || clean.startsWith('dpkg:') ||
+                    clean.match(/^(Get|Hit|Ign|Fetched|Reading|Building|Preparing|Unpacking|Setting)\s/i)) return;
+                hideThinking();
+                appendJarvis(clean);
             }
             if (type === 'remote_linked') {
+                setStatus('online', 'Online', 'Device connected');
                 checkDeviceStatus();
+            }
+            if (type === 'remote_prompt') {
+                hideThinking();
+                appendJarvis('❓ ' + data);
             }
         } catch { }
     };
 
-    eventSource.onerror = () => {
-        eventSource.close();
-        eventSource = null;
+    es.onerror = () => {
+        es.close(); es = null;
         setTimeout(connectSSE, 3000);
     };
 };
 
-const addMsg = (text, sender) => {
-    const chat = document.getElementById('chat-messages');
+// ─── Messaging ─────────────────────────────────────────
+const addSys = (text) => {
+    const el = document.createElement('div');
+    el.className = 'sys-msg';
+    el.textContent = text;
+    document.getElementById('messages').appendChild(el);
+    scrollBottom();
+};
 
-    // Attempt continuous stream merging for JARVIS responses
-    const lastMsg = chat.lastElementChild;
+const appendUser = (text) => {
+    currentGroupEl = null; // reset so next jarvis reply starts fresh
+    const group = document.createElement('div');
+    group.className = 'msg-group user';
+    group.innerHTML = `<div class="bubble">${escHtml(text)}</div>`;
+    document.getElementById('messages').appendChild(group);
+    scrollBottom();
+};
 
-    if (sender === 'jarvis' && lastMsg && lastMsg.classList.contains('msg-jarvis')) {
-        // Prevent huge unbroken blocks, split if > 1000 chars
-        if (lastMsg.textContent.length < 1500 && !lastMsg.textContent.includes('─')) {
-            lastMsg.textContent += '\n' + text;
-            chat.scrollTop = chat.scrollHeight;
+const appendJarvis = (text) => {
+    // Merge consecutive jarvis lines into one bubble (up to 2000 chars)
+    if (currentGroupEl && currentGroupEl.dataset.type === 'jarvis') {
+        const bubble = currentGroupEl.querySelector('.bubble');
+        if (bubble && bubble.textContent.length < 2000 && !text.includes('───')) {
+            bubble.textContent += '\n' + text;
+            scrollBottom();
             return;
         }
     }
-
-    const msg = document.createElement('div');
-    msg.className = `msg msg-${sender}`;
-    msg.textContent = text;
-    chat.appendChild(msg);
-    chat.scrollTop = chat.scrollHeight;
+    const group = document.createElement('div');
+    group.className = 'msg-group jarvis';
+    group.dataset.type = 'jarvis';
+    group.innerHTML = `<div class="msg-sender">JARVIS</div><div class="bubble">${escHtml(text)}</div>`;
+    document.getElementById('messages').appendChild(group);
+    currentGroupEl = group;
+    scrollBottom();
 };
 
-window.sendCommand = async () => {
-    const input = document.getElementById('chat-input');
-    const text = input.value.trim();
+const showThinking = () => {
+    if (thinkingEl) return;
+    thinkingEl = document.createElement('div');
+    thinkingEl.className = 'msg-group jarvis';
+    thinkingEl.innerHTML = `<div class="msg-sender">JARVIS</div><div class="thinking"><span></span><span></span><span></span></div>`;
+    document.getElementById('messages').appendChild(thinkingEl);
+    scrollBottom();
+};
+
+const hideThinking = () => {
+    if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
+};
+
+const scrollBottom = () => {
+    const m = document.getElementById('messages');
+    m.scrollTop = m.scrollHeight;
+};
+
+const escHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// ─── Send ──────────────────────────────────────────────
+window.sendMessage = async () => {
+    const ta = document.getElementById('chat-input');
+    const text = ta.value.trim();
     if (!text) return;
 
-    input.value = '';
-    addMsg(text, 'user');
+    ta.value = '';
+    ta.style.height = '24px';
+    appendUser(text);
+    showThinking();
 
     try {
-        await fetch('/api/android/command', {
+        const res = await fetch('/api/android/command', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ command: text })
         });
+        const d = await res.json();
+        if (!d.ok) {
+            hideThinking();
+            addSys('Command not delivered — no device linked.');
+        }
     } catch {
-        addMsg('Failed to transmit command. Bridge may be down.', 'sys');
+        hideThinking();
+        addSys('Network error — failed to send command.');
     }
 };
 
+window.handleKey = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        window.sendMessage();
+    }
+};
+
+window.autoResize = (el) => {
+    el.style.height = '24px';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+};
+
 window.wakeJarvis = async () => {
-    addMsg('Transmitting wake signal to target device...', 'sys');
+    addSys('Sending wake signal to device...');
+    showThinking();
     try {
         await fetch('/api/android/command', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            // Wake up OpenClaw via proot-distro login ubuntu -- jarvis
             body: JSON.stringify({ command: 'proot-distro login ubuntu -- jarvis' })
         });
     } catch {
-        addMsg('Wake transmission failed.', 'sys');
+        hideThinking();
+        addSys('Wake signal failed.');
     }
+};
+
+window.newSession = () => {
+    const msgs = document.getElementById('messages');
+    msgs.innerHTML = '';
+    currentGroupEl = null;
+    thinkingEl = null;
+    addSys('New session started.');
 };
 
 init();

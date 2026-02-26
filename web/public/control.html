@@ -4,218 +4,520 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>JARVIS — Control Panel</title>
-    <link rel="stylesheet" href="/style.css" />
+    <title>JARVIS — Chat</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <style>
-        body {
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            background: #020b14;
-            color: #fff;
+        }
+
+        :root {
+            --bg: #0d1117;
+            --bg2: #161b22;
+            --bg3: #21262d;
+            --cy: #58a6ff;
+            --cy2: #388bfd;
+            --gr: #3fb950;
+            --dim: #8b949e;
+            --border: #30363d;
+            --user-bubble: #1f6feb;
+            --jarvis-bubble: #1e3a5f;
+            --red: #f85149;
+            --gold: #d29922;
+            --radius: 12px;
+        }
+
+        html,
+        body {
+            height: 100%;
+            background: var(--bg);
+            color: #e6edf3;
             font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        /* ─── Layout ─── */
+        .app {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            height: 100vh;
+        }
+
+        /* ─── Sidebar ─── */
+        .sidebar {
+            background: var(--bg2);
+            border-right: 1px solid var(--border);
             display: flex;
+            flex-direction: column;
+            padding: 16px;
+            gap: 8px;
+        }
+
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 4px 16px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 8px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--cy2), #1a7fbb);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 16px;
+            color: #fff;
+        }
+
+        .logo-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: #e6edf3;
+            letter-spacing: 1px;
+        }
+
+        .sidebar-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--dim);
+            padding: 4px 8px;
+            margin-top: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: var(--dim);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s;
+        }
+
+        .nav-item:hover {
+            background: var(--bg3);
+            color: #e6edf3;
+        }
+
+        .nav-item.active {
+            background: rgba(88, 166, 255, 0.1);
+            color: var(--cy);
+        }
+
+        .nav-item .icon {
+            font-size: 15px;
+            width: 18px;
+            text-align: center;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--gold);
+            box-shadow: 0 0 6px var(--gold);
+            animation: pulse-dot 2s infinite;
+            flex-shrink: 0;
+        }
+
+        .dot.online {
+            background: var(--gr);
+            box-shadow: 0 0 6px var(--gr);
+            animation: none;
+        }
+
+        .dot.offline {
+            background: var(--red);
+            box-shadow: 0 0 6px var(--red);
+            animation: none;
+        }
+
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* ─── Main chat area ─── */
+        .chat-area {
+            display: flex;
+            flex-direction: column;
             height: 100vh;
             overflow: hidden;
         }
 
-        .sidebar {
-            width: 280px;
-            background: rgba(0, 243, 255, 0.03);
-            border-right: 1px solid var(--cy);
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .main-chat {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-
+        /* ─── Chat header ─── */
         .chat-header {
-            padding: 20px;
-            border-bottom: 1px solid var(--cy2);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: rgba(0, 0, 0, 0.5);
+            padding: 12px 20px;
+            background: var(--bg2);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
         }
 
-        .chat-messages {
+        .chat-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .session-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 12px;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 13px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--cy);
+        }
+
+        .header-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #e6edf3;
+        }
+
+        .header-sub {
+            font-size: 12px;
+            color: var(--dim);
+            margin-top: 1px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--dim);
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .icon-btn:hover {
+            background: var(--bg3);
+            color: #e6edf3;
+        }
+
+        /* ─── Messages ─── */
+        .messages {
             flex: 1;
             overflow-y: auto;
             padding: 20px;
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 4px;
             scroll-behavior: smooth;
         }
 
-        .chat-input-area {
-            padding: 20px;
-            border-top: 1px solid var(--cy2);
-            background: rgba(0, 0, 0, 0.8);
+        .messages::-webkit-scrollbar {
+            width: 6px;
         }
 
-        .input-wrapper {
+        .messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .messages::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .msg-group {
             display: flex;
-            gap: 12px;
+            flex-direction: column;
+            max-width: 78%;
+            gap: 2px;
         }
 
-        .input-wrapper input {
-            flex: 1;
-            background: #111;
-            border: 1px solid var(--cy);
-            color: #fff;
-            padding: 14px 20px;
-            border-radius: 8px;
-            font-size: 15px;
-            outline: none;
-            transition: box-shadow 0.3s;
-            font-family: var(--mono);
+        .msg-group.user {
+            align-self: flex-end;
+            align-items: flex-end;
         }
 
-        .input-wrapper input:focus {
-            box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+        .msg-group.jarvis {
+            align-self: flex-start;
+            align-items: flex-start;
         }
 
-        .input-wrapper input:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        .msg-sender {
+            font-size: 11px;
+            color: var(--dim);
+            padding: 0 4px;
+            margin-bottom: 2px;
         }
 
-        .msg {
-            max-width: 80%;
-            padding: 12px 16px;
-            border-radius: 12px;
+        .bubble {
+            padding: 10px 14px;
+            border-radius: var(--radius);
             font-size: 14px;
-            line-height: 1.5;
-            font-family: var(--mono);
+            line-height: 1.6;
             white-space: pre-wrap;
             word-break: break-word;
         }
 
-        .msg-user {
-            align-self: flex-end;
-            background: rgba(0, 243, 255, 0.1);
-            border: 1px solid var(--cy);
-            border-bottom-right-radius: 2px;
+        .msg-group.user .bubble {
+            background: var(--user-bubble);
+            color: #fff;
+            border-bottom-right-radius: 3px;
         }
 
-        .msg-jarvis {
-            align-self: flex-start;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--dim);
-            border-bottom-left-radius: 2px;
+        .msg-group.jarvis .bubble {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            color: #e6edf3;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            border-bottom-left-radius: 3px;
         }
 
-        .msg-sys {
+        .sys-msg {
             align-self: center;
-            background: transparent;
-            border: 1px dashed var(--cy2);
-            color: var(--cy);
             font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            max-width: 90%;
-            text-align: center;
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 11px;
-            font-weight: bold;
-            letter-spacing: 1px;
-            color: var(--gr);
-            padding: 6px 12px;
+            color: var(--dim);
+            padding: 6px 14px;
+            background: var(--bg2);
+            border: 1px dashed var(--border);
             border-radius: 20px;
-            border: 1px solid var(--gr);
-            background: rgba(0, 255, 135, 0.1);
-            transition: all 0.3s ease;
+            margin: 8px 0;
+            text-align: center;
+            max-width: 80%;
         }
 
-        .status-badge.offline {
-            color: #ff5f5f;
-            border-color: #ff5f5f;
-            background: rgba(255, 95, 95, 0.1);
+        /* ─── Think indicator ─── */
+        .thinking {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            padding: 12px 14px;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            border-bottom-left-radius: 3px;
+            width: fit-content;
         }
 
-        .status-badge.connecting {
-            color: var(--gold);
-            border-color: var(--gold);
-            background: rgba(255, 215, 0, 0.1);
-        }
-
-        .status-indicator {
-            width: 8px;
-            height: 8px;
+        .thinking span {
+            width: 6px;
+            height: 6px;
+            background: var(--dim);
             border-radius: 50%;
-            background: currentColor;
-            box-shadow: 0 0 8px currentColor;
+            animation: blink 1.2s infinite;
         }
 
-        .pulse {
-            animation: pulse 2s infinite;
+        .thinking span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .thinking span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes blink {
+
+            0%,
+            60%,
+            100% {
+                opacity: 0.2;
+            }
+
+            30% {
+                opacity: 1;
+            }
+        }
+
+        /* ─── Input area ─── */
+        .input-area {
+            padding: 16px 20px;
+            background: var(--bg2);
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .input-box {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 10px 12px;
+            transition: border-color 0.2s;
+        }
+
+        .input-box:focus-within {
+            border-color: var(--cy);
+        }
+
+        .input-box textarea {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #e6edf3;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            resize: none;
+            height: 24px;
+            max-height: 120px;
+            line-height: 1.6;
+        }
+
+        .input-box textarea::placeholder {
+            color: var(--dim);
+        }
+
+        .send-btn {
+            background: var(--cy2);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 15px;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+
+        .send-btn:hover {
+            background: var(--cy);
+            transform: scale(1.05);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .input-hint {
+            font-size: 11px;
+            color: var(--dim);
+            margin-top: 8px;
+            text-align: center;
         }
     </style>
 </head>
 
 <body>
-    <div class="sidebar">
-        <div class="jarvis-logo" style="margin-bottom: 30px; transform: scale(0.8); transform-origin: top left;">
-            <div class="logo-ring"><span class="logo-j">J</span></div>
-            <div class="logo-title" style="font-size: 24px;">JARVIS</div>
-        </div>
-
-        <div style="font-size: 11px; color: var(--cy); letter-spacing: 1px; margin-bottom: 12px;">SYSTEM STATUS</div>
-        <div id="conn-status" class="status-badge connecting" style="margin-bottom: 24px;">
-            <div class="status-indicator pulse"></div>
-            <span id="conn-text">CONNECTING...</span>
-        </div>
-
-        <div style="font-size: 11px; color: var(--cy); letter-spacing: 1px; margin-bottom: 12px;">TARGET DEVICE</div>
-        <div
-            style="background: rgba(0,0,0,0.5); padding: 12px; border-radius: 8px; border: 1px solid var(--cy2); font-size: 13px; font-family: var(--mono); color: #fff;">
-            USER: <span id="device-email">---</span><br>
-            CODE: <span id="device-code" style="color:var(--cy)">---</span>
-        </div>
-
-        <div style="flex:1"></div>
-        <a href="/" class="btn btn-outline" style="text-align: center; font-size: 12px; padding: 10px;">← Back to
-            Dashboard</a>
-    </div>
-
-    <div class="main-chat">
-        <div class="chat-header">
-            <div>
-                <h2
-                    style="margin: 0; font-size: 18px; color: var(--cy); display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 24px;">🤖</span> JARVIS Neural Interface
-                </h2>
-                <div style="font-size: 12px; color: var(--dim); margin-top: 4px;">Remote bridge active</div>
+    <div class="app">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">J</div>
+                <div class="logo-name">JARVIS</div>
             </div>
-            <button class="btn btn-gold" id="btn-wake" style="padding: 8px 16px; font-size: 12px; margin: 0;"
-                onclick="wakeJarvis()">⚡ WAKE AI ENGINE</button>
-        </div>
 
-        <div class="chat-messages" id="chat-messages">
-            <div class="msg msg-sys">JARVIS Remote Protocol Initialized. Establishing secure link to host device...
+            <div class="sidebar-label">Chat</div>
+            <a class="nav-item active" href="#">
+                <span class="icon">💬</span> Chat
+            </a>
+
+            <div class="sidebar-label" style="margin-top: 8px;">Device</div>
+            <div class="status-pill">
+                <div class="dot" id="status-dot"></div>
+                <div>
+                    <div id="status-text" style="font-size:12px;font-weight:600;">Connecting...</div>
+                    <div id="status-sub" style="font-size:10px;color:var(--dim);margin-top:1px;">Checking bridge</div>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <a href="/" class="nav-item">
+                    <span class="icon">←</span> Dashboard
+                </a>
             </div>
         </div>
 
-        <div class="chat-input-area">
-            <div class="input-wrapper">
-                <input type="text" id="chat-input" placeholder="Type a message or command for JARVIS..."
-                    onkeypress="if(event.key === 'Enter') sendCommand()" disabled />
-                <button class="btn btn-primary" id="chat-send-btn" style="margin: 0;" onclick="sendCommand()"
-                    disabled>Send →</button>
+        <!-- Main chat -->
+        <div class="chat-area">
+            <div class="chat-header">
+                <div class="chat-header-left">
+                    <div>
+                        <div class="header-title">Chat</div>
+                        <div class="header-sub">Direct gateway to JARVIS on your device</div>
+                    </div>
+                    <div class="session-badge">
+                        <span>agent:main:main</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="icon-btn" title="New session" onclick="newSession()">↺</button>
+                    <button class="icon-btn" title="Wake JARVIS" onclick="wakeJarvis()" id="btn-wake">⚡</button>
+                </div>
             </div>
-            <div style="font-size: 11px; color: var(--dim); margin-top: 10px; text-align: center;">
-                Messages are securely transmitted to the JARVIS active background service on your linked device.
+
+            <div class="messages" id="messages">
+                <div class="sys-msg">JARVIS neural bridge initialized. Connecting to your device...</div>
+            </div>
+
+            <div class="input-area">
+                <div class="input-box">
+                    <textarea id="chat-input" placeholder="Message JARVIS (↵ to send, Shift+↵ for new line)" rows="1"
+                        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+                    <button class="send-btn" id="send-btn" onclick="sendMessage()">➤</button>
+                </div>
+                <div class="input-hint">Messages are transmitted to JARVIS on your linked Android device</div>
             </div>
         </div>
     </div>
