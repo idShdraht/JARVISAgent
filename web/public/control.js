@@ -4,40 +4,53 @@ let currentUser = null;
 let deviceCode = null;
 
 const init = async () => {
+    // Show a loading state while we fetch user info
+    addMsg('Authenticating with JARVIS portal...', 'sys');
+
+    let me;
     try {
         const res = await fetch('/api/me');
-        if (!res.ok) { window.location.href = '/?screen=login'; return; }
-        currentUser = await res.json();
-        if (!currentUser.setupDone) { window.location.href = '/'; return; }
-
-        document.getElementById('device-email').textContent = currentUser.email;
-
-        // Fetch pairing code
-        const check = await fetch(`/api/android/poll/check?t=${Date.now()}`);
-        const data = await check.json();
-
-        // Always enable input so user can send even if device is sleeping
-        document.getElementById('chat-input').disabled = false;
-        document.getElementById('chat-send-btn').disabled = false;
-
-        if (data.linked) {
-            deviceCode = data.code;
-            document.getElementById('device-code').textContent = deviceCode;
-
-            // Connect to SSE for logs
-            connectSSE();
-
-            // Check if device is alive
-            checkDeviceStatus();
-            setInterval(checkDeviceStatus, 5000);
-        } else {
-            addMsg('No active device link found. Please return to the Dashboard to set up or link your device.', 'sys');
-            document.getElementById('conn-status').className = 'status-badge offline';
-            document.getElementById('conn-text').textContent = 'NO LINK';
-            document.querySelector('.status-indicator').classList.remove('pulse');
+        if (!res.ok) {
+            // Not logged in
+            addMsg('Session expired. Redirecting to login...', 'sys');
+            setTimeout(() => { window.location.href = '/'; }, 1500);
+            return;
         }
-    } catch {
-        window.location.href = '/?screen=login';
+        me = await res.json();
+    } catch (e) {
+        addMsg('Network error: ' + e.message + '. Check your connection.', 'sys');
+        return; // Don't redirect — just show the error in the UI
+    }
+
+    currentUser = me;
+    document.getElementById('device-email').textContent = currentUser.email;
+
+    // Fetch pairing code — works whether or not setupDone is flagged in DB
+    let data = { linked: false };
+    try {
+        const check = await fetch(`/api/android/poll/check?t=${Date.now()}`);
+        data = await check.json();
+    } catch { /* bridge might not be available yet */ }
+
+    // Always enable input so user can send even if device is sleeping
+    document.getElementById('chat-input').disabled = false;
+    document.getElementById('chat-send-btn').disabled = false;
+
+    if (data.linked) {
+        deviceCode = data.code;
+        document.getElementById('device-code').textContent = deviceCode;
+
+        // Connect to SSE for logs
+        connectSSE();
+
+        // Check if device is alive
+        checkDeviceStatus();
+        setInterval(checkDeviceStatus, 5000);
+    } else {
+        addMsg('No active device link found. Go back to the Dashboard, complete setup, and return here.', 'sys');
+        document.getElementById('conn-status').className = 'status-badge offline';
+        document.getElementById('conn-text').textContent = 'NO LINK';
+        document.querySelector('.status-indicator').classList.remove('pulse');
     }
 };
 
