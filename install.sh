@@ -42,16 +42,24 @@ if ! grep -q "hijack.js" ~/.bashrc; then
     echo 'export NODE_OPTIONS="--require /root/hijack.js"' >> ~/.bashrc
 fi
 
-# Clone and setup JARVIS (from the local source or global)
+# 45. Clone and setup JARVIS (from the local source or global)
 # For now, we'll install the rebranded core if available, or fallback to the latest openclaw rebranded on the fly
-echo "Step 6: Installing JARVIS CLI..."
-npm install -g openclaw@latest # Ideally this would be the rebranded 'jarvis' pkg if published
-# Note: Since 'jarvis' brand is local, we advise running the local core setup if needed
+echo "Step 6: Installing JARVIS AI Core..."
+npm install -g openclaw@latest
+
+# Create JARVIS alias/wrapper
+cat > /usr/local/bin/jarvis << 'JARVIS_CMD'
+#!/bin/bash
+export NODE_OPTIONS="--require /root/hijack.js"
+export OPENCLAW_PROFILE=jarvis
+export CLAWDBOT_PROFILE=jarvis
+exec openclaw "$@"
+JARVIS_CMD
+chmod +x /usr/local/bin/jarvis
 
 echo "--------------------------------------"
 echo "✅ JARVIS Environment is ready!"
-echo "To start onboarding, run: openclaw onboard"
-echo "(Note: CLI command is still 'openclaw' until the package is fully renamed in registry)"
+echo "To start onboarding, run: jarvis onboard"
 echo "--------------------------------------"
 EOF
 
@@ -62,4 +70,4 @@ proot-distro login ubuntu -- bash /data/data/com.termux/files/home/jarvis_ubuntu
 # Cleanup
 rm jarvis_ubuntu_setup.sh
 
-echo "Done! You can now access your JARVIS by running 'proot-distro login ubuntu' and then 'openclaw onboard'."
+echo "Done! You can now access your JARVIS by running 'proot-distro login ubuntu' and then 'jarvis onboard'."

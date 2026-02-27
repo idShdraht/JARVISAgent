@@ -42,19 +42,9 @@ passport.use(new GoogleStrategy(
     }
 ));
 
-// ─── Middleware helpers ────────────────────────────────
 const ensureAuth = (req, res, next) => {
     if (req.isAuthenticated()) return next();
     res.status(401).json({ error: 'Not authenticated' });
 };
 
-const ensureHasPassword = (req, res, next) => {
-    // Deprecated: No longer enforcing secondary passwords
-    return next();
-};
-
-// ─── Password helpers ──────────────────────────────────
-const hashPassword = (plain) => bcrypt.hash(plain, SALT);
-const checkPassword = (plain, hash) => bcrypt.compare(plain, hash);
-
-module.exports = { passport, ensureAuth, ensureHasPassword, hashPassword, checkPassword };
+module.exports = { passport, ensureAuth };

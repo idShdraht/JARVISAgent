@@ -8,8 +8,7 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const db = require('./db');
-const { passport, ensureAuth, ensureHasPassword,
-    hashPassword, checkPassword } = require('./auth');
+const { passport, ensureAuth } = require('./auth');
 const { addSSEClient, removeSSEClient,
     runInstaller, getPlatform, ensureWindowsScript,
     runOnboard, sendOnboardInput, stopOnboard } = require('./installer');
@@ -93,53 +92,6 @@ app.get('/api/status', (req, res) => {
     });
 });
 
-// Set password (first login after Google OAuth)
-app.post('/api/set-password', ensureAuth, async (req, res) => {
-    try {
-        // SECURITY: Don't allow overwriting an existing password
-        if (req.user.password_hash) {
-            return res.status(400).json({ error: 'Password already set. Use shift + refresh if you need to reset.' });
-        }
-
-        const { password } = req.body;
-        if (!password || password.length < 6)
-            return res.status(400).json({ error: 'Password must be at least 6 characters' });
-
-        const hash = await hashPassword(password);
-        await db.setPassword(req.user.id, hash);
-
-        // Reload user from DB to ensure session is perfectly in sync
-        const updatedUser = await db.findUserById(req.user.id);
-        req.login(updatedUser, (err) => {
-            if (err) return res.status(500).json({ error: 'Session refresh failed' });
-            db.logSession(req.user.id, 'set_password', 'Password created', 'web');
-            res.json({ ok: true });
-        });
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-// Email/password login (alternative to Google)
-app.post('/api/login', async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        if (!email || !password) return res.status(400).json({ error: 'Missing email or password' });
-        const user = await db.findUserByEmail(email);
-        if (!user || !user.password_hash)
-            return res.status(401).json({ error: 'No account found. Please sign in with Google first.' });
-        const ok = await checkPassword(password, user.password_hash);
-        if (!ok) return res.status(401).json({ error: 'Wrong password. Try again.' });
-        req.login(user, err => {
-            if (err) return res.status(500).json({ error: 'Login session error: ' + err.message });
-            res.json({ ok: true, needsPassword: false });
-        });
-    } catch (e) {
-        console.error('[JARVIS] Login error:', e.message);
-        res.status(500).json({ error: 'Login failed: ' + e.message });
-    }
-});
 
 // ─── Setup API ─────────────────────────────────────────
 // Trigger setup for "this PC" or "android"

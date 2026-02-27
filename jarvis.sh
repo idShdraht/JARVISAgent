@@ -539,7 +539,7 @@ if [ -f "$SCRIPT_DIR/jarvis_instagram.mjs" ]; then
   cp "$SCRIPT_DIR/package.json"         /tmp/jarvis_ig_src/
   cp "$SCRIPT_DIR/jarvis_instagram_setup.sh" /tmp/
   chmod +x /tmp/jarvis_instagram_setup.sh
-  success_msg "Instagram source files staged."
+  success_msg "JARVIS source files staged."
 else
   # Write the setup script and a minimal package.json inline if not found
   warn_msg "Source dir not found at $SCRIPT_DIR — writing inline."
