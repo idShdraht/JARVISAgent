@@ -61,10 +61,7 @@ app.get('/auth/google',
 app.get('/auth/callback',
     passport.authenticate('google', { failureRedirect: '/?error=auth_failed' }),
     (req, res) => {
-        // After Google login — if no password yet, go to set-password screen
-        if (!req.user.password_hash) {
-            return res.redirect('/?screen=set-password');
-        }
+        // Redirect directly to dashboard — secondary password removed
         res.redirect('/?screen=dashboard');
     }
 );
@@ -146,7 +143,7 @@ app.post('/api/login', async (req, res) => {
 
 // ─── Setup API ─────────────────────────────────────────
 // Trigger setup for "this PC" or "android"
-app.post('/api/setup/run', ensureAuth, ensureHasPassword, async (req, res) => {
+app.post('/api/setup/run', ensureAuth, async (req, res) => {
     const { targetPlatform } = req.body;
     const userId = req.user.id;
     ensureWindowsScript();

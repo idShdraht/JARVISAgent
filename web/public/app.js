@@ -5,7 +5,7 @@
 'use strict';
 
 // ─── Screen router ────────────────────────────────────
-const screens = ['login', 'set-password', 'dashboard'];
+const screens = ['login', 'dashboard'];
 let currentUser = null;
 
 const showScreen = (name) => {
@@ -41,9 +41,7 @@ const init = async () => {
         if (!res.ok) { showScreen('login'); return; }
         currentUser = await res.json();
 
-        if (!currentUser.hasPassword) {
-            showScreen('set-password');
-        } else if (urlScreen === 'dashboard' || !urlScreen) {
+        if (urlScreen === 'dashboard' || !urlScreen) {
             showScreen('dashboard');
             populateDashboard();
         } else {
@@ -101,81 +99,6 @@ const populateDashboard = () => {
     });
 };
 
-// ─── Login form ────────────────────────────────────────
-document.getElementById('form-login')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('btn-login');
-    btn.disabled = true;
-    btn.textContent = 'Signing in...';
-
-    const email = document.getElementById('login-email').value.trim();
-    const pass = document.getElementById('login-pass').value;
-
-    try {
-        const res = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password: pass }),
-        });
-        const data = await res.json();
-
-        if (!res.ok) {
-            showAlert('login-alert', data.error || 'Invalid credentials', 'error');
-            return;
-        }
-
-        currentUser = await fetch('/api/me').then(r => r.json());
-        if (!currentUser.hasPassword) {
-            showScreen('set-password');
-        } else {
-            showScreen('dashboard');
-            populateDashboard();
-        }
-    } catch {
-        showAlert('login-alert', 'Network error — is the server running?', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = 'Sign In';
-    }
-});
-
-// ─── Set password form ─────────────────────────────────
-document.getElementById('form-set-password')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const pass = document.getElementById('sp-pass').value;
-    const confirm = document.getElementById('sp-confirm').value;
-    const btn = document.getElementById('btn-sp');
-
-    if (pass !== confirm) {
-        showAlert('sp-alert', 'Passwords do not match', 'error');
-        return;
-    }
-    if (pass.length < 6) {
-        showAlert('sp-alert', 'Password must be at least 6 characters', 'error');
-        return;
-    }
-
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
-    try {
-        const res = await fetch('/api/set-password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password: pass }),
-        });
-        const data = await res.json();
-        if (!res.ok) { showAlert('sp-alert', data.error, 'error'); return; }
-
-        currentUser = await fetch('/api/me').then(r => r.json());
-        showScreen('dashboard');
-        populateDashboard();
-    } catch {
-        showAlert('sp-alert', 'Network error', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = 'Set Password & Continue →';
-    }
-});
 
 // ─── Logout ────────────────────────────────────────────
 window.logout = async () => {

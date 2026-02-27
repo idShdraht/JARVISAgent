@@ -49,8 +49,8 @@ const ensureAuth = (req, res, next) => {
 };
 
 const ensureHasPassword = (req, res, next) => {
-    if (req.user?.password_hash) return next();
-    res.status(403).json({ error: 'Password not set', needsPassword: true });
+    // Deprecated: No longer enforcing secondary passwords
+    return next();
 };
 
 // ─── Password helpers ──────────────────────────────────
