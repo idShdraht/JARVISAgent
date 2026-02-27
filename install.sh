@@ -70,4 +70,7 @@ proot-distro login ubuntu -- bash /data/data/com.termux/files/home/jarvis_ubuntu
 # Cleanup
 rm jarvis_ubuntu_setup.sh
 
-echo "Done! You can now access your JARVIS by running 'proot-distro login ubuntu' and then 'jarvis onboard'."
+echo "Done! You can now access your JARVIS by running:"
+echo "  proot-distro login ubuntu"
+echo "and then:"
+echo "  jarvis onboard"
