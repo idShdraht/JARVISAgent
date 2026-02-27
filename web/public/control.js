@@ -61,10 +61,31 @@ const checkDeviceStatus = async () => {
         const s = await res.json();
         if (s.deviceLinked && (Date.now() - s.lastActive < 30000)) {
             setStatus('online', 'Online', 'Device is responding');
-        } else {
+            hideOfflineBanner();
+        } else if (s.deviceLinked) {
             setStatus('connecting', 'Away', 'Device may be sleeping');
+            showOfflineBanner();
+        } else {
+            setStatus('offline', 'Offline', 'Device is not connected');
+            showOfflineBanner();
         }
     } catch { }
+};
+
+const showOfflineBanner = () => {
+    let b = document.getElementById('offline-banner');
+    if (b) return;
+    b = document.createElement('div');
+    b.id = 'offline-banner';
+    b.style.cssText = 'background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.4);border-radius:8px;padding:10px 16px;margin:0 0 12px;font-size:13px;color:#f85149;display:flex;align-items:center;justify-content:space-between;gap:12px';
+    b.innerHTML = `<span>😴 JARVIS is sleeping — send a wake signal to reconnect</span>
+        <button onclick="wakeJarvis()" style="background:rgba(248,81,73,0.2);border:1px solid #f85149;color:#f85149;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700">⚡ Wake</button>`;
+    const msgs = document.getElementById('messages');
+    if (msgs && msgs.parentElement) msgs.parentElement.insertBefore(b, msgs);
+};
+
+const hideOfflineBanner = () => {
+    document.getElementById('offline-banner')?.remove();
 };
 
 // ─── SSE from server ───────────────────────────────────

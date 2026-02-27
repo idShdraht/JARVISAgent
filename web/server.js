@@ -13,6 +13,7 @@ const { passport, ensureAuth, ensureHasPassword,
 const { addSSEClient, removeSSEClient,
     runInstaller, getPlatform, ensureWindowsScript,
     runOnboard, sendOnboardInput, stopOnboard } = require('./installer');
+const { saveChannel, getChannels, deleteChannel } = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -326,6 +327,77 @@ app.get('/api/proxy/termux', (req, res) => {
     }
 
     proxyRequest(url);
+});
+
+// ─── Channels API ─────────────────────────────────
+
+// GET /api/channels/list — return merged list: static config + DB status
+app.get('/api/channels/list', ensureAuth, async (req, res) => {
+    try {
+        const rows = await getChannels(req.user.id);
+        // Build a map of channelId -> status for fast lookup
+        const statusMap = {};
+        rows.forEach(r => { statusMap[r.channel_id] = r.status; });
+        res.json({ ok: true, channels: statusMap });
+    } catch (e) {
+        console.error('[JARVIS] channels/list error:', e.message);
+        res.json({ ok: true, channels: {} }); // graceful fallback
+    }
+});
+
+// POST /api/channels/link — save token to DB and push config command to device
+app.post('/api/channels/link', ensureAuth, async (req, res) => {
+    const { channelId, token } = req.body;
+    if (!channelId) return res.status(400).json({ error: 'channelId required' });
+
+    try {
+        // Save to DB
+        await saveChannel(req.user.id, channelId, token || null, 'linked');
+
+        // Push config command to linked Android device (best-effort)
+        if (token) {
+            const { pushRemoteCommand } = require('./installer');
+            const configCmd = `proot-distro login ubuntu -- bash -c "openclaw config set channels.${channelId}.token '${token.replace(/'/g, "'\\''")}' 2>/dev/null; nohup openclaw gateway --port 18789 > /tmp/jarvis_gateway.log 2>&1 &"`;
+            pushRemoteCommand(req.user.id, { command: configCmd });
+        }
+
+        res.json({ ok: true });
+    } catch (e) {
+        console.error('[JARVIS] channels/link error:', e.message);
+        res.status(500).json({ error: 'Failed to link channel' });
+    }
+});
+
+// POST /api/channels/unlink — remove channel from DB and push removal command
+app.post('/api/channels/unlink', ensureAuth, async (req, res) => {
+    const { channelId } = req.body;
+    if (!channelId) return res.status(400).json({ error: 'channelId required' });
+
+    try {
+        await deleteChannel(req.user.id, channelId);
+
+        // Tell device to stop this channel
+        const { pushRemoteCommand } = require('./installer');
+        const stopCmd = `proot-distro login ubuntu -- bash -c "openclaw config unset channels.${channelId} 2>/dev/null || true"`;
+        pushRemoteCommand(req.user.id, { command: stopCmd });
+
+        res.json({ ok: true });
+    } catch (e) {
+        console.error('[JARVIS] channels/unlink error:', e.message);
+        res.status(500).json({ error: 'Failed to unlink channel' });
+    }
+});
+
+// GET /api/gateway/status — check if the linked device is actively polling
+app.get('/api/gateway/status', ensureAuth, (req, res) => {
+    const { userToCode, remoteSessions } = require('./installer');
+    const code = userToCode.get(req.user.id);
+    if (!code) return res.json({ online: false, reason: 'no_device' });
+    const session = remoteSessions.get(code);
+    if (!session) return res.json({ online: false, reason: 'no_session' });
+    const age = Date.now() - (session.lastActive || 0);
+    const online = session.deviceLinked && age < 30000;
+    res.json({ online, lastActive: session.lastActive, age });
 });
 
 // ─── SPA fallback ──────────────────────────────────────

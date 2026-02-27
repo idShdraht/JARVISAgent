@@ -82,6 +82,18 @@ const populateDashboard = () => {
         if (currentUser.setupDone) {
             document.getElementById('control-panel-banner').style.display = 'block';
             document.getElementById('platform-section').style.display = 'none';
+            // Also show Channels shortcut
+            const bannerEl = document.getElementById('control-panel-banner');
+            if (bannerEl && !bannerEl.querySelector('.channels-shortcut')) {
+                const link = document.createElement('a');
+                link.href = '/channels.html';
+                link.className = 'channels-shortcut';
+                link.style.cssText = 'display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:10px 20px;border-radius:8px;background:rgba(88,166,255,0.1);border:1px solid rgba(88,166,255,0.3);color:#58a6ff;text-decoration:none;font-size:13px;font-weight:600;transition:all 0.2s';
+                link.innerHTML = '📡 Manage Channels →';
+                link.onmouseover = () => link.style.background = 'rgba(88,166,255,0.2)';
+                link.onmouseout = () => link.style.background = 'rgba(88,166,255,0.1)';
+                bannerEl.appendChild(link);
+            }
         } else {
             // AUTO-PILOT: If setup is not done, jump straight to the guide after a short delay
             setTimeout(() => {

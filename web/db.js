@@ -88,6 +88,18 @@ const init = async () => {
       FOREIGN KEY (user_id) REFERENCES jarvis_users(id) ON DELETE CASCADE
     )
   `);
+    await pool.execute(`
+    CREATE TABLE IF NOT EXISTS jarvis_channels (
+      id           INT AUTO_INCREMENT PRIMARY KEY,
+      user_id      INT NOT NULL,
+      channel_id   VARCHAR(50) NOT NULL,
+      token        TEXT,
+      status       VARCHAR(20) DEFAULT 'linked',
+      linked_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_user_channel (user_id, channel_id),
+      FOREIGN KEY (user_id) REFERENCES jarvis_users(id) ON DELETE CASCADE
+    )
+  `);
     console.log('[JARVIS-DB] Tables ready');
 };
 
@@ -161,6 +173,40 @@ const logSession = (userId, event, detail, platform) => {
     ).catch(() => { });
 };
 
+// ─── Channel persistence ──────────────────────────────
+// In-memory fallback for local mode
+const LOCAL_CHANNELS = new Map(); // `${userId}:${channelId}` → {token, status}
+
+const saveChannel = async (userId, channelId, token, status = 'linked') => {
+    const key = `${userId}:${channelId}`;
+    if (!pool) { LOCAL_CHANNELS.set(key, { token, status, linked_at: new Date() }); return; }
+    await query(
+        `INSERT INTO jarvis_channels (user_id, channel_id, token, status)
+         VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE token = VALUES(token), status = VALUES(status), linked_at = NOW()`,
+        [userId, channelId, token || null, status]
+    );
+};
+
+const getChannels = async (userId) => {
+    if (!pool) {
+        const result = [];
+        for (const [key, val] of LOCAL_CHANNELS) {
+            if (key.startsWith(`${userId}:`)) {
+                result.push({ channel_id: key.split(':')[1], ...val });
+            }
+        }
+        return result;
+    }
+    return query('SELECT channel_id, status, linked_at FROM jarvis_channels WHERE user_id = ?', [userId]);
+};
+
+const deleteChannel = async (userId, channelId) => {
+    const key = `${userId}:${channelId}`;
+    if (!pool) { LOCAL_CHANNELS.delete(key); return; }
+    await query('DELETE FROM jarvis_channels WHERE user_id = ? AND channel_id = ?', [userId, channelId]);
+};
+
 // ─── Save / load pairing code ──────────────────────────
 const savePairingCode = async (userId, code) => {
     if (!pool) {
@@ -184,5 +230,6 @@ module.exports = {
     init, query, findUserByGoogleId, findUserByEmail, findUserById,
     upsertGoogleUser, setPassword, markSetupDone, logSession,
     savePairingCode, loadPairingCode,
+    saveChannel, getChannels, deleteChannel,
     isLocalMode: () => !pool,
 };

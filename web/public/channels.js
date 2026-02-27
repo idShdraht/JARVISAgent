@@ -2,36 +2,36 @@
 
 const CHANNELS = [
     {
-        id: 'whatsapp', name: 'WhatsApp', icon: '💬', cmd: 'openclaw channels login --channel whatsapp',
+        id: 'whatsapp', name: 'WhatsApp', icon: '💬',
         desc: 'Link your WhatsApp number — JARVIS replies to your DMs',
         setupType: 'qr', docs: 'https://docs.openclaw.ai/channels/whatsapp'
     },
     {
-        id: 'telegram', name: 'Telegram', icon: '✈️', cmd: 'openclaw channels login --channel telegram',
+        id: 'telegram', name: 'Telegram', icon: '✈️',
         desc: 'Connect a Telegram bot — anyone can message your JARVIS bot',
-        setupType: 'token', tokenLabel: 'Bot Token from @BotFather', tokenKey: 'TELEGRAM_BOT_TOKEN',
+        setupType: 'token', tokenLabel: 'Bot Token from @BotFather',
         docs: 'https://docs.openclaw.ai/channels/telegram'
     },
     {
-        id: 'slack', name: 'Slack', icon: '💼', cmd: 'openclaw channels login --channel slack',
+        id: 'slack', name: 'Slack', icon: '💼',
         desc: 'Bring JARVIS into your Slack workspace',
-        setupType: 'token', tokenLabel: 'Slack Bot Token (xoxb-...)', tokenKey: 'SLACK_BOT_TOKEN',
+        setupType: 'token', tokenLabel: 'Slack Bot Token (xoxb-...)',
         docs: 'https://docs.openclaw.ai/channels/slack'
     },
     {
-        id: 'discord', name: 'Discord', icon: '🎮', cmd: 'openclaw channels login --channel discord',
+        id: 'discord', name: 'Discord', icon: '🎮',
         desc: 'Run JARVIS as a Discord bot on your server',
-        setupType: 'token', tokenLabel: 'Discord Bot Token', tokenKey: 'DISCORD_BOT_TOKEN',
+        setupType: 'token', tokenLabel: 'Discord Bot Token',
         docs: 'https://docs.openclaw.ai/channels/discord'
     },
     {
-        id: 'signal', name: 'Signal', icon: '🔒', cmd: 'openclaw channels login --channel signal',
+        id: 'signal', name: 'Signal', icon: '🔒',
         desc: 'Private and encrypted — JARVIS via Signal',
-        setupType: 'info', info: 'Requires signal-cli to be installed on the device. Run: openclaw channels login --channel signal',
+        setupType: 'info', info: 'Requires signal-cli on the device. Run: openclaw channels login --channel signal',
         docs: 'https://docs.openclaw.ai/channels/signal'
     },
     {
-        id: 'webchat', name: 'WebChat', icon: '🌐', cmd: null,
+        id: 'webchat', name: 'WebChat', icon: '🌐',
         desc: 'Built-in chat at localhost:18789 — active when gateway is running',
         setupType: 'builtin', docs: 'https://docs.openclaw.ai/web/webchat'
     },
@@ -50,12 +50,50 @@ const SKILLS = [
 
 let currentChannel = null;
 let sseConn = null;
+// channelId → 'linked' | 'offline'
+let channelStatus = {};
+
+// ─── Load real statuses from DB ───────────────────────
+const loadChannelStatus = async () => {
+    try {
+        const res = await fetch('/api/channels/list');
+        const d = await res.json();
+        if (d.ok) channelStatus = d.channels || {};
+    } catch { }
+    renderChannels();
+};
+
+// ─── Check gateway status ─────────────────────────────
+const checkGateway = async () => {
+    const el = document.getElementById('gateway-status');
+    if (!el) return;
+    try {
+        const res = await fetch('/api/gateway/status');
+        const d = await res.json();
+        if (d.online) {
+            el.className = 'gateway-badge gateway-online';
+            el.textContent = '⚡ Gateway: Online';
+        } else {
+            el.className = 'gateway-badge gateway-offline';
+            el.textContent = '⭘ Gateway: Offline';
+        }
+    } catch {
+        el.className = 'gateway-badge gateway-offline';
+        el.textContent = '⭘ Gateway: Unreachable';
+    }
+};
 
 // ─── Render Channels ───────────────────────────────────
 const renderChannels = () => {
     const grid = document.getElementById('channels-grid');
-    grid.innerHTML = CHANNELS.map(ch => `
-        <div class="channel-card" id="card-${ch.id}">
+    grid.innerHTML = CHANNELS.map(ch => {
+        const status = channelStatus[ch.id]; // 'linked' or undefined
+        const isLinked = status === 'linked';
+        const cardClass = isLinked ? 'channel-card linked' : 'channel-card';
+        const badgeClass = isLinked ? 'badge badge-online' : 'badge badge-na';
+        const badgeText = isLinked ? 'Online' : 'Off';
+        return `
+        <div class="${cardClass}" id="card-${ch.id}">
             <div class="channel-top">
                 <div class="channel-info">
                     <div class="channel-logo">${ch.icon}</div>
@@ -64,13 +102,13 @@ const renderChannels = () => {
                         <div class="channel-desc">${ch.desc}</div>
                     </div>
                 </div>
-                <span class="badge badge-na" id="badge-${ch.id}">Off</span>
+                <span class="badge ${badgeClass}" id="badge-${ch.id}">${badgeText}</span>
             </div>
-            <div class="channel-actions">
-                ${getActionButtons(ch)}
+            <div class="channel-actions" id="actions-${ch.id}">
+                ${getActionButtons(ch, isLinked)}
             </div>
         </div>
-    `).join('');
+    `}).join('');
 
     // Skills
     const sg = document.getElementById('skills-grid');
@@ -86,17 +124,24 @@ const renderChannels = () => {
     `).join('');
 };
 
-const getActionButtons = (ch) => {
+const getActionButtons = (ch, isLinked) => {
     if (ch.setupType === 'builtin') {
         return `<span class="badge badge-online">Always Active</span>
                 <a href="/control.html" class="btn btn-outline">Open Chat</a>`;
     }
+    const unlinkBtn = isLinked
+        ? `<button class="btn btn-danger" onclick="unlinkChannel('${ch.id}')">🔌 Unlink</button>`
+        : '';
     if (ch.setupType === 'qr') {
-        return `<button class="btn btn-primary" onclick="linkWhatsApp()">📱 Link via QR</button>`;
+        return isLinked
+            ? `<button class="btn btn-outline" onclick="linkWhatsApp()">🔄 Re-link QR</button>${unlinkBtn}`
+            : `<button class="btn btn-primary" onclick="linkWhatsApp()">📱 Link via QR</button>`;
     }
     if (ch.setupType === 'token') {
-        return `<button class="btn btn-primary" onclick="openTokenModal('${ch.id}')">🔗 Link</button>
-                <a href="${ch.docs}" target="_blank" class="btn btn-outline">Docs ↗</a>`;
+        return isLinked
+            ? `<button class="btn btn-outline" onclick="openTokenModal('${ch.id}')">✏️ Update Token</button>${unlinkBtn}`
+            : `<button class="btn btn-primary" onclick="openTokenModal('${ch.id}')">🔗 Link</button>
+               <a href="${ch.docs}" target="_blank" class="btn btn-outline">Docs ↗</a>`;
     }
     if (ch.setupType === 'info') {
         return `<button class="btn btn-outline" onclick="showInfo('${ch.id}')">How to setup</button>`;
@@ -104,11 +149,56 @@ const getActionButtons = (ch) => {
     return '';
 };
 
+// ─── Update a single channel's card state ──────────────
+const setChannelLinked = (channelId, linked) => {
+    channelStatus[channelId] = linked ? 'linked' : undefined;
+    if (!linked) delete channelStatus[channelId];
+
+    const badge = document.getElementById(`badge-${channelId}`);
+    const card = document.getElementById(`card-${channelId}`);
+    const actions = document.getElementById(`actions-${channelId}`);
+    const ch = CHANNELS.find(c => c.id === channelId);
+    if (!badge || !card || !ch) return;
+
+    if (linked) {
+        badge.className = 'badge badge-online';
+        badge.textContent = 'Online';
+        card.classList.add('linked');
+    } else {
+        badge.className = 'badge badge-na';
+        badge.textContent = 'Off';
+        card.classList.remove('linked');
+    }
+    if (actions) actions.innerHTML = getActionButtons(ch, linked);
+};
+
+// ─── Unlink a channel ─────────────────────────────────
+window.unlinkChannel = async (channelId) => {
+    if (!confirm(`Unlink ${channelId}? JARVIS will no longer respond on that channel.`)) return;
+    try {
+        await fetch('/api/channels/unlink', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ channelId })
+        });
+        setChannelLinked(channelId, false);
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+};
+
 // ─── WhatsApp QR Flow ──────────────────────────────────
 window.linkWhatsApp = async () => {
     document.getElementById('qr-modal').classList.add('open');
     document.getElementById('qr-area').innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--dim)">⏳ Sending command to device...</div>`;
     document.getElementById('qr-log').textContent = 'Requesting QR from device...';
+
+    // Tell server to save whatsapp as linked in DB (optimistic)
+    await fetch('/api/channels/link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelId: 'whatsapp', token: null })
+    });
 
     // Send command to device via bridge
     try {
@@ -127,29 +217,29 @@ window.linkWhatsApp = async () => {
         return;
     }
 
+    // Strip ANSI codes helper
+    const stripAnsi = s => s.replace(/\x1b\[[0-9;]*[mGKHF]/g, '').trim();
+
     // Listen for QR code via SSE
-    if (!sseConn) sseConn = new EventSource('/api/setup/sse');
+    if (sseConn) sseConn.close();
+    sseConn = new EventSource('/api/setup/sse');
     sseConn.onmessage = (e) => {
         try {
             const { type, data } = JSON.parse(e.data);
             if (type !== 'remote_log') return;
+            const clean = stripAnsi(data);
             const log = document.getElementById('qr-log');
-            log.textContent += '\n' + data;
+            log.textContent += '\n' + clean;
             log.scrollTop = log.scrollHeight;
 
-            // Detect QR string (WhatsApp outputs a multi-line QR URL or a special marker)
-            const qrMatch = data.match(/scan QR: ([\w\-/+=%.:]+)/i) ||
-                data.match(/Scan this QR[\s\S]*(2@[\w\d+/=]+)/i) ||
-                data.match(/qr:([\w\d+/=@,]+)/i) ||
-                data.match(/(2@[A-Za-z0-9+/=,]{20,})/);
-            if (qrMatch) {
-                renderQR(qrMatch[1]);
-            }
-            // If WhatsApp session is established
-            if (data.includes('WhatsApp connected') || data.includes('session established') || data.includes('Connection established')) {
-                document.getElementById('badge-whatsapp').className = 'badge badge-online';
-                document.getElementById('badge-whatsapp').textContent = 'Online';
-                document.getElementById('card-whatsapp').classList.add('linked');
+            // Detect QR string — WhatsApp outputs several known patterns
+            const qrMatch = clean.match(/scan QR: ([\w\-/+=%.:]+)/i)
+                || clean.match(/qr:([\w\d+/=@,]+)/i)
+                || clean.match(/(2@[A-Za-z0-9+/=,]{20,})/);
+            if (qrMatch) renderQR(qrMatch[1]);
+
+            if (clean.includes('WhatsApp connected') || clean.includes('Connection established') || clean.includes('session established')) {
+                setChannelLinked('whatsapp', true);
                 document.getElementById('qr-area').innerHTML = '<div style="font-size:40px;margin:30px 0">✅</div><div style="color:var(--gr);font-weight:700">WhatsApp Connected!</div>';
             }
         } catch { }
@@ -158,9 +248,9 @@ window.linkWhatsApp = async () => {
 
 const renderQR = (data) => {
     const area = document.getElementById('qr-area');
-    area.innerHTML = '<canvas id="qrcanvas"></canvas>';
+    area.innerHTML = '<div id="qrbox"></div>';
     try {
-        new QRCode(document.getElementById('qrcanvas'), {
+        new QRCode(document.getElementById('qrbox'), {
             text: data, width: 200, height: 200,
             colorDark: '#000000', colorLight: '#ffffff',
         });
@@ -179,7 +269,7 @@ window.closeQrModal = () => {
 window.openTokenModal = (channelId) => {
     currentChannel = CHANNELS.find(c => c.id === channelId);
     document.getElementById('modal-title').textContent = `Link ${currentChannel.name}`;
-    document.getElementById('modal-desc').textContent = currentChannel.tokenLabel;
+    document.getElementById('modal-desc').textContent = currentChannel.tokenLabel || 'Enter token:';
     document.getElementById('modal-token').value = '';
     document.getElementById('modal-token').placeholder = `Paste ${currentChannel.name} token here...`;
     document.getElementById('token-modal').classList.add('open');
@@ -197,18 +287,22 @@ window.submitToken = async () => {
     const btn = document.getElementById('modal-submit');
     btn.disabled = true; btn.textContent = 'Connecting...';
 
-    // Send the token as a config command to the device
-    const configCmd = `proot-distro login ubuntu -- bash -c "openclaw config set channels.${currentChannel.id}.token ${token} && openclaw gateway --port 18789 &"`;
     try {
-        await fetch('/api/android/command', {
+        // Save to DB + push command to device
+        const res = await fetch('/api/channels/link', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ command: configCmd })
+            body: JSON.stringify({ channelId: currentChannel.id, token })
         });
-        document.getElementById(`badge-${currentChannel.id}`).className = 'badge badge-online';
-        document.getElementById(`badge-${currentChannel.id}`).textContent = 'Online';
-        document.getElementById(`card-${currentChannel.id}`).classList.add('linked');
-    } catch { }
+        const d = await res.json();
+        if (d.ok) {
+            setChannelLinked(currentChannel.id, true);
+        } else {
+            alert('Error: ' + (d.error || 'Failed to link'));
+        }
+    } catch (e) {
+        alert('Network error: ' + e.message);
+    }
 
     btn.disabled = false; btn.textContent = 'Connect';
     closeModal();
@@ -219,4 +313,8 @@ window.showInfo = (channelId) => {
     if (ch) alert(ch.info);
 };
 
-renderChannels();
+// ─── Boot ──────────────────────────────────────────────
+loadChannelStatus();
+checkGateway();
+// Refresh gateway status every 10 seconds
+setInterval(checkGateway, 10000);

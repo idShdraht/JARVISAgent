@@ -430,6 +430,43 @@
             overflow-y: auto;
             margin-top: 12px;
         }
+
+        .gateway-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 5px 12px;
+            border-radius: 20px;
+            letter-spacing: 0.5px;
+            margin-bottom: 24px;
+        }
+
+        .gateway-online {
+            background: rgba(63, 185, 80, 0.12);
+            color: var(--gr);
+            border: 1px solid var(--gr);
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+
+        .gateway-offline {
+            background: rgba(248, 81, 73, 0.1);
+            color: var(--red);
+            border: 1px solid rgba(248, 81, 73, 0.4);
+        }
+
+        @keyframes pulse-glow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(63, 185, 80, 0);
+            }
+
+            50% {
+                box-shadow: 0 0 8px 2px rgba(63, 185, 80, 0.3);
+            }
+        }
     </style>
 </head>
 
@@ -451,6 +488,8 @@
         </div>
 
         <div class="main">
+            <div id="gateway-status" class="gateway-badge gateway-offline" style="float:right;margin-top:4px">⭘ Gateway:
+                Checking...</div>
             <div class="page-title">📡 Channels</div>
             <div class="page-sub">Connect JARVIS to your messaging apps. Once linked, JARVIS replies on your behalf.
             </div>

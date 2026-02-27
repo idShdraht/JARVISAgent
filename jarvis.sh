@@ -440,7 +440,7 @@ echo -e "\n  ${GLD}${BOLD}⟫ Installing JARVIS Instagram Integration${RESET}\n"
 bash /tmp/jarvis_instagram_setup.sh
 echo ""
 echo -e "${CYN}${BOLD}"
-    ${CYN}${BOLD}jarvis-ig${RESET}         ${DIM}# Setup Instagram auto-responder${RESET}"
+echo -e "  ${CYN}${BOLD}jarvis-ig${RESET}         ${DIM}# Setup Instagram auto-responder${RESET}"
 echo ""
 echo -e "  ${BLU}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
