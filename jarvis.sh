@@ -365,7 +365,12 @@ echo -e "\n  ${GLD}${BOLD}⟫ Installing JARVIS AI Core${RESET}\n"
   # Apply JARVIS Rebranding Patch on-the-fly
   ENGINE_DIR="$(npm root -g)/openclaw"
   if [ -d "$ENGINE_DIR" ]; then
-      find "$ENGINE_DIR" -type f \( -name "*.js" -o -name "*.json" \) -exec sed -i 's/OpenClaw/JARVIS/g; s/OPENCLAW/JARVIS/g; s/Open-Claw/JARVIS/g; s/openclaw/jarvis/g; s/open-claw/jarvis/g; s/🦞/🤖/g' {} +
+      find "$ENGINE_DIR" -path "*/node_modules/*" -prune -o -type f \( -name "*.js" -o -name "*.json" \) -exec sed -i 's/OpenClaw/JARVIS/g; s/OPENCLAW/JARVIS/g; s/Open-Claw/JARVIS/g; s/openclaw/jarvis/g; s/open-claw/jarvis/g; s/🦞/🤖/g' {} +
+      
+      # Ensure package.json still registers the command bin correctly for CLI resolution
+      sed -i 's/"jarvis": "jarvis.mjs"/"openclaw": "jarvis.mjs"/g' "$ENGINE_DIR/package.json" 2>/dev/null || true
+      sed -i 's/"jarvis": "jarvis.js"/"openclaw": "jarvis.js"/g' "$ENGINE_DIR/package.json" 2>/dev/null || true
+      sed -i 's/"jarvis": "bin\/run"/"openclaw": "bin\/run"/g' "$ENGINE_DIR/package.json" 2>/dev/null || true
   fi
 ) > /tmp/jarvis_npm.log 2>&1 &
 spin "Loading JARVIS cognitive modules..."
