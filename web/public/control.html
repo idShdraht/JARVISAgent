@@ -456,6 +456,64 @@
             margin-top: 8px;
             text-align: center;
         }
+
+        /* ─── Mobile Overrides ─── */
+        @media (max-width: 768px) {
+            .app {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            .chat-header {
+                padding: 10px 16px;
+            }
+
+            .header-info-mobile {
+                display: flex !important;
+                flex-direction: column;
+            }
+
+            .sidebar-logo-mobile {
+                display: flex !important;
+                align-items: center;
+                gap: 8px;
+                margin-right: 12px;
+            }
+
+            .logo-icon-sm {
+                width: 24px;
+                height: 24px;
+                background: var(--cy2);
+                border-radius: 4px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                font-size: 12px;
+                color: #fff;
+            }
+
+            .msg-group {
+                max-width: 90%;
+            }
+
+            .header-actions {
+                gap: 4px;
+            }
+
+            .mobile-nav-btn {
+                display: flex !important;
+            }
+        }
+
+        .header-info-mobile,
+        .sidebar-logo-mobile,
+        .mobile-nav-btn {
+            display: none;
+        }
     </style>
 </head>
 
@@ -493,15 +551,19 @@
         <div class="chat-area">
             <div class="chat-header">
                 <div class="chat-header-left">
+                    <div class="sidebar-logo-mobile">
+                        <div class="logo-icon-sm">J</div>
+                    </div>
                     <div>
                         <div class="header-title">Chat</div>
-                        <div class="header-sub">Direct gateway to JARVIS on your device</div>
+                        <div class="header-sub">JARVIS Gateway</div>
                     </div>
-                    <div class="session-badge">
-                        <span>agent:main:main</span>
+                    <div class="session-badge" style="margin-left:8px">
+                        <span>main</span>
                     </div>
                 </div>
                 <div class="header-actions">
+                    <a href="/" class="icon-btn mobile-nav-btn" title="Dashboard">🏠</a>
                     <button class="icon-btn" title="New session" onclick="newSession()">↺</button>
                     <button class="icon-btn" title="Wake JARVIS" onclick="wakeJarvis()" id="btn-wake">⚡</button>
                 </div>

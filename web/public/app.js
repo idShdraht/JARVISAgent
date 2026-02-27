@@ -95,11 +95,8 @@ const populateDashboard = () => {
                 bannerEl.appendChild(link);
             }
         } else {
-            // AUTO-PILOT: If setup is not done, jump straight to the guide after a short delay
-            setTimeout(() => {
-                if (detected === 'windows') window.startPCGuide();
-                else startAndroidGuide();
-            }, 1000);
+            // Dashboard auto-start disabled as per user request
+            // User will manually choose platform
         }
     });
 };
@@ -385,11 +382,17 @@ window.submitAndroidAnswer = async () => {
     addAndroidTermLine('⟫ ' + text, 'hd');
 
     // Send back to remote device
-    await fetch('/api/android/command', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command: text })
-    });
+    try {
+        await fetch('/api/android/command', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ command: text })
+        });
+        // Hide only if hint suggests it's a one-off answer
+        document.getElementById('android-input-area').style.display = 'none';
+    } catch (e) {
+        console.error('Answer send failed:', e);
+    }
 };
 
 window.submitAndroidChoice = async (num, label) => {
@@ -1011,10 +1014,9 @@ const connectSSE = (mode = 'setup') => {
                     btnNext.innerHTML = '⚡ LINKED! CONTINUE →';
                 }
 
-                // AUTO-ADVANCE: Instant transition to Step 3
+                // AUTO-ADVANCE DISABLED: Let the user see the confirmation then click
                 if (androidStep === 1) {
-                    addTermLine('[ JARVIS ] Neural link synchronized. Advancing...', 'hd');
-                    setTimeout(() => nextAndroidStep(), 800);
+                    addTermLine('[ JARVIS ] Neural link synchronized. Continue when ready.', 'hd');
                 }
                 break;
             }
