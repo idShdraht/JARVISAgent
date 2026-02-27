@@ -1,0 +1,12 @@
+{
+  "name": "@jarvis/whatsapp",
+  "version": "2026.2.26",
+  "private": true,
+  "description": "JARVIS WhatsApp channel plugin",
+  "type": "module",
+  "jarvis": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

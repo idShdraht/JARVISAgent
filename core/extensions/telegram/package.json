@@ -1,0 +1,12 @@
+{
+  "name": "@jarvis/telegram",
+  "version": "2026.2.26",
+  "private": true,
+  "description": "JARVIS Telegram channel plugin",
+  "type": "module",
+  "jarvis": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "@jarvis/copilot-proxy",
+  "version": "2026.2.26",
+  "private": true,
+  "description": "JARVIS Copilot Proxy provider plugin",
+  "type": "module",
+  "jarvis": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

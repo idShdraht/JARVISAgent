@@ -1,0 +1,17 @@
+// Default signing values for shared/repo builds.
+// Auto-selected local team overrides live in .local-signing.xcconfig (git-ignored).
+// Manual local overrides can go in LocalSigning.xcconfig (git-ignored).
+
+JARVIS_CODE_SIGN_STYLE = Manual
+JARVIS_DEVELOPMENT_TEAM = Y5PE65HELJ
+
+JARVIS_APP_BUNDLE_ID = ai.jarvis.ios
+JARVIS_SHARE_BUNDLE_ID = ai.jarvis.ios.share
+
+JARVIS_APP_PROFILE = ai.jarvis.ios Development
+JARVIS_SHARE_PROFILE = ai.jarvis.ios.share Development
+
+// Keep local includes after defaults: xcconfig is evaluated top-to-bottom,
+// so later assignments in local files override the defaults above.
+#include? ".local-signing.xcconfig"
+#include? "LocalSigning.xcconfig"

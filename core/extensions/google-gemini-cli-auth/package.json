@@ -1,0 +1,12 @@
+{
+  "name": "@jarvis/google-gemini-cli-auth",
+  "version": "2026.2.26",
+  "private": true,
+  "description": "JARVIS Gemini CLI OAuth provider plugin",
+  "type": "module",
+  "jarvis": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

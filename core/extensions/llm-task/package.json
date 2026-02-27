@@ -1,0 +1,12 @@
+{
+  "name": "@jarvis/llm-task",
+  "version": "2026.2.26",
+  "private": true,
+  "description": "JARVIS JSON-only LLM task plugin",
+  "type": "module",
+  "jarvis": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

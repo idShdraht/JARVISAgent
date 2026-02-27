@@ -1,0 +1,12 @@
+{
+  "name": "@jarvis/minimax-portal-auth",
+  "version": "2026.2.26",
+  "private": true,
+  "description": "JARVIS MiniMax Portal OAuth provider plugin",
+  "type": "module",
+  "jarvis": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

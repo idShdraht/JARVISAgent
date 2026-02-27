@@ -1,0 +1,241 @@
+name: JARVIS
+options:
+  bundleIdPrefix: ai.jarvis
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "16.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+
+packages:
+  JARVISKit:
+    path: ../shared/JARVISKit
+  Swabble:
+    path: ../../Swabble
+
+schemes:
+  JARVIS:
+    shared: true
+    build:
+      targets:
+        JARVIS: all
+    test:
+      targets:
+        - JARVISTests
+
+targets:
+  JARVIS:
+    type: application
+    platform: iOS
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
+    sources:
+      - path: Sources
+    dependencies:
+      - target: JARVISShareExtension
+        embed: true
+      - target: JARVISWatchApp
+      - package: JARVISKit
+      - package: JARVISKit
+        product: JARVISChatUI
+      - package: JARVISKit
+        product: JARVISProtocol
+      - package: Swabble
+        product: SwabbleKit
+      - sdk: AppIntents.framework
+    preBuildScripts:
+      - name: SwiftFormat (lint)
+        basedOnDependencyAnalysis: false
+        inputFileLists:
+          - $(SRCROOT)/SwiftSources.input.xcfilelist
+        script: |
+          set -euo pipefail
+          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+          if ! command -v swiftformat >/dev/null 2>&1; then
+            echo "error: swiftformat not found (brew install swiftformat)" >&2
+            exit 1
+          fi
+          swiftformat --lint --config "$SRCROOT/../../.swiftformat" \
+            --filelist "$SRCROOT/SwiftSources.input.xcfilelist"
+      - name: SwiftLint
+        basedOnDependencyAnalysis: false
+        inputFileLists:
+          - $(SRCROOT)/SwiftSources.input.xcfilelist
+        script: |
+          set -euo pipefail
+          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+          if ! command -v swiftlint >/dev/null 2>&1; then
+            echo "error: swiftlint not found (brew install swiftlint)" >&2
+            exit 1
+          fi
+          swiftlint lint --config "$SRCROOT/.swiftlint.yml" --use-script-input-file-lists
+    settings:
+      base:
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_ENTITLEMENTS: Sources/JARVIS.entitlements
+        CODE_SIGN_STYLE: "$(JARVIS_CODE_SIGN_STYLE)"
+        DEVELOPMENT_TEAM: "$(JARVIS_DEVELOPMENT_TEAM)"
+        PRODUCT_BUNDLE_IDENTIFIER: "$(JARVIS_APP_BUNDLE_ID)"
+        PROVISIONING_PROFILE_SPECIFIER: "$(JARVIS_APP_PROFILE)"
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        ENABLE_APPINTENTS_METADATA: NO
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleDisplayName: JARVIS
+        CFBundleIconName: AppIcon
+        CFBundleURLTypes:
+          - CFBundleURLName: ai.jarvis.ios
+            CFBundleURLSchemes:
+              - jarvis
+        CFBundleShortVersionString: "2026.2.26"
+        CFBundleVersion: "20260226"
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UIBackgroundModes:
+          - audio
+          - remote-notification
+        BGTaskSchedulerPermittedIdentifiers:
+          - ai.jarvis.ios.bgrefresh
+        NSLocalNetworkUsageDescription: JARVIS discovers and connects to your JARVIS gateway on the local network.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoadsInWebContent: true
+        NSBonjourServices:
+          - _jarvis-gw._tcp
+        NSCameraUsageDescription: JARVIS can capture photos or short video clips when requested via the gateway.
+        NSLocationWhenInUseUsageDescription: JARVIS uses your location when you allow location sharing.
+        NSLocationAlwaysAndWhenInUseUsageDescription: JARVIS can share your location in the background when you enable Always.
+        NSMicrophoneUsageDescription: JARVIS needs microphone access for voice wake.
+        NSSpeechRecognitionUsageDescription: JARVIS uses on-device speech recognition for voice wake.
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+
+  JARVISShareExtension:
+    type: app-extension
+    platform: iOS
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
+    sources:
+      - path: ShareExtension
+    dependencies:
+      - package: JARVISKit
+      - sdk: AppIntents.framework
+    settings:
+      base:
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_STYLE: "$(JARVIS_CODE_SIGN_STYLE)"
+        DEVELOPMENT_TEAM: "$(JARVIS_DEVELOPMENT_TEAM)"
+        ENABLE_APPINTENTS_METADATA: NO
+        PRODUCT_BUNDLE_IDENTIFIER: "$(JARVIS_SHARE_BUNDLE_ID)"
+        PROVISIONING_PROFILE_SPECIFIER: "$(JARVIS_SHARE_PROFILE)"
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+    info:
+      path: ShareExtension/Info.plist
+      properties:
+        CFBundleDisplayName: JARVIS Share
+        CFBundleShortVersionString: "2026.2.26"
+        CFBundleVersion: "20260226"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).ShareViewController"
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsText: true
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+              NSExtensionActivationSupportsImageWithMaxCount: 10
+              NSExtensionActivationSupportsMovieWithMaxCount: 1
+
+  JARVISWatchApp:
+    type: application.watchapp2
+    platform: watchOS
+    deploymentTarget: "11.0"
+    sources:
+      - path: WatchApp
+    dependencies:
+      - target: JARVISWatchExtension
+    configFiles:
+      Debug: Config/Signing.xcconfig
+      Release: Config/Signing.xcconfig
+    settings:
+      base:
+        ENABLE_APPINTENTS_METADATA: NO
+        PRODUCT_BUNDLE_IDENTIFIER: "$(JARVIS_WATCH_APP_BUNDLE_ID)"
+    info:
+      path: WatchApp/Info.plist
+      properties:
+        CFBundleDisplayName: JARVIS
+        CFBundleShortVersionString: "2026.2.26"
+        CFBundleVersion: "20260226"
+        WKCompanionAppBundleIdentifier: "$(JARVIS_APP_BUNDLE_ID)"
+        WKWatchKitApp: true
+
+  JARVISWatchExtension:
+    type: watchkit2-extension
+    platform: watchOS
+    deploymentTarget: "11.0"
+    sources:
+      - path: WatchExtension/Sources
+    dependencies:
+      - sdk: WatchConnectivity.framework
+      - sdk: UserNotifications.framework
+    configFiles:
+      Debug: Config/Signing.xcconfig
+      Release: Config/Signing.xcconfig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: "$(JARVIS_WATCH_EXTENSION_BUNDLE_ID)"
+    info:
+      path: WatchExtension/Info.plist
+      properties:
+        CFBundleDisplayName: JARVIS
+        CFBundleShortVersionString: "2026.2.26"
+        CFBundleVersion: "20260226"
+        NSExtension:
+          NSExtensionAttributes:
+            WKAppBundleIdentifier: "$(JARVIS_WATCH_APP_BUNDLE_ID)"
+          NSExtensionPointIdentifier: com.apple.watchkit
+
+  JARVISTests:
+    type: bundle.unit-test
+    platform: iOS
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
+    sources:
+      - path: Tests
+    dependencies:
+      - target: JARVIS
+      - package: Swabble
+        product: SwabbleKit
+      - sdk: AppIntents.framework
+    settings:
+      base:
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_STYLE: "$(JARVIS_CODE_SIGN_STYLE)"
+        DEVELOPMENT_TEAM: "$(JARVIS_DEVELOPMENT_TEAM)"
+        PRODUCT_BUNDLE_IDENTIFIER: ai.jarvis.ios.tests
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/JARVIS.app/JARVIS"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+    info:
+      path: Tests/Info.plist
+      properties:
+        CFBundleDisplayName: JARVISTests
+        CFBundleShortVersionString: "2026.2.26"
+        CFBundleVersion: "20260226"

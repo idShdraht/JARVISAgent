@@ -1,0 +1,12 @@
+{
+  "name": "@jarvis/imessage",
+  "version": "2026.2.26",
+  "private": true,
+  "description": "JARVIS iMessage channel plugin",
+  "type": "module",
+  "jarvis": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

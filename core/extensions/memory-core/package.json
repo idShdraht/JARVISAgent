@@ -1,0 +1,15 @@
+{
+  "name": "@jarvis/memory-core",
+  "version": "2026.2.26",
+  "private": true,
+  "description": "JARVIS core memory search plugin",
+  "type": "module",
+  "peerDependencies": {
+    "jarvis": ">=2026.1.26"
+  },
+  "jarvis": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
