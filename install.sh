@@ -5,7 +5,7 @@
 
 set -e
 
-echo "🦞 Welcome to the JARVIS Setup Wizard"
+echo "🤖 Welcome to the JARVIS Setup Wizard"
 echo "--------------------------------------"
 echo "This script will automate the installation of JARVIS on your Android device via Termux/Ubuntu."
 
