@@ -48,6 +48,11 @@
             display: grid;
             grid-template-columns: 240px 1fr;
             height: 100vh;
+            transition: grid-template-columns 0.3s ease;
+        }
+
+        .app.sidebar-collapsed {
+            grid-template-columns: 0px 1fr;
         }
 
         /* ─── Sidebar ─── */
@@ -58,6 +63,15 @@
             flex-direction: column;
             padding: 16px;
             gap: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .app.sidebar-collapsed .sidebar {
+            padding: 0;
+            border-right: none;
+            width: 0;
         }
 
         .sidebar-logo {
@@ -203,6 +217,27 @@
             display: flex;
             align-items: center;
             gap: 12px;
+        }
+
+        .hamburger-btn {
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 8px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--dim);
+            font-size: 18px;
+            transition: all 0.15s;
+            margin-right: 8px;
+        }
+
+        .hamburger-btn:hover {
+            background: var(--bg3);
+            color: #e6edf3;
         }
 
         .session-badge {
@@ -551,6 +586,7 @@
         <div class="chat-area">
             <div class="chat-header">
                 <div class="chat-header-left">
+                    <button class="hamburger-btn" onclick="toggleSidebar()" title="Toggle Sidebar">≡</button>
                     <div class="sidebar-logo-mobile">
                         <div class="logo-icon-sm">J</div>
                     </div>
@@ -584,6 +620,17 @@
         </div>
     </div>
 
+    <script>
+        function toggleSidebar() {
+            document.querySelector('.app').classList.toggle('sidebar-collapsed');
+            localStorage.setItem('sidebar-collapsed', document.querySelector('.app').classList.contains('sidebar-collapsed'));
+        }
+
+        // Restore state
+        if (localStorage.getItem('sidebar-collapsed') === 'true') {
+            document.querySelector('.app').classList.add('sidebar-collapsed');
+        }
+    </script>
     <script src="/control.js"></script>
 </body>
 

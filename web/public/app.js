@@ -1169,3 +1169,24 @@ window.selectPlatform = (platform) => {
 // ─── Boot ─────────────────────────────────────────────
 init();
 
+// ─── Setup Reset Logic ──────────────────────────────────
+async function confirmReset() {
+    if (!confirm("⚠️ CAUTION: This will wipe the JARVIS installation on your phone (if linked) and reset your dashboard. Are you sure?")) {
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/setup/reset', { method: 'POST' });
+        const data = await res.json();
+        if (data.ok) {
+            alert("✅ Reset complete. Your dashboard will now refresh.");
+            window.location.reload();
+        } else {
+            alert("❌ Reset failed: " + (data.error || "Unknown error"));
+        }
+    } catch (e) {
+        console.error("Reset error:", e);
+        alert("❌ Network error during reset.");
+    }
+}
+

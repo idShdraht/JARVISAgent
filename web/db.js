@@ -226,10 +226,19 @@ const loadPairingCode = async (userId) => {
     return r[0]?.pairing_code || null;
 };
 
+const resetUserSetup = async (userId) => {
+    if (!pool) {
+        const u = localFindById(userId);
+        if (u) { u.setup_done = 0; u.platform = 'unknown'; u.pairing_code = null; }
+        return;
+    }
+    await query('UPDATE jarvis_users SET setup_done = 0, platform = "unknown", pairing_code = NULL WHERE id = ?', [userId]);
+};
+
 module.exports = {
     init, query, findUserByGoogleId, findUserByEmail, findUserById,
     upsertGoogleUser, setPassword, markSetupDone, logSession,
-    savePairingCode, loadPairingCode,
+    savePairingCode, loadPairingCode, resetUserSetup,
     saveChannel, getChannels, deleteChannel,
     isLocalMode: () => !pool,
 };

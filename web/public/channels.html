@@ -44,6 +44,11 @@
             display: grid;
             grid-template-columns: 220px 1fr;
             height: 100vh;
+            transition: grid-template-columns 0.3s ease;
+        }
+
+        .app.sidebar-collapsed {
+            grid-template-columns: 0px 1fr;
         }
 
         .sidebar {
@@ -53,6 +58,15 @@
             flex-direction: column;
             padding: 16px;
             gap: 4px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .app.sidebar-collapsed .sidebar {
+            padding: 0;
+            border-right: none;
+            width: 0;
         }
 
         .sidebar-logo {
@@ -488,6 +502,8 @@
         </div>
 
         <div class="main">
+            <button class="btn btn-outline" style="margin-bottom: 20px; padding: 6px 10px; font-size: 16px;"
+                onclick="toggleSidebar()" title="Toggle Sidebar">≡</button>
             <div id="gateway-status" class="gateway-badge gateway-offline" style="float:right;margin-top:4px">⭘ Gateway:
                 Checking...</div>
             <div class="page-title">📡 Channels</div>
@@ -534,6 +550,17 @@
         </div>
     </div>
 
+    <script>
+        function toggleSidebar() {
+            document.querySelector('.app').classList.toggle('sidebar-collapsed');
+            localStorage.setItem('sidebar-collapsed', document.querySelector('.app').classList.contains('sidebar-collapsed'));
+        }
+
+        // Restore state
+        if (localStorage.getItem('sidebar-collapsed') === 'true') {
+            document.querySelector('.app').classList.add('sidebar-collapsed');
+        }
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="/channels.js"></script>
 </body>

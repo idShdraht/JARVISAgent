@@ -165,6 +165,33 @@ app.post('/api/setup/done', ensureAuth, async (req, res) => {
     res.json({ ok: true });
 });
 
+// Reset setup (wipe phone installation and reset dashboard)
+app.post('/api/setup/reset', ensureAuth, async (req, res) => {
+    const userId = req.user.id;
+    try {
+        // 1. Tell remote device to wipe (if linked)
+        const { pushRemoteCommand, userToCode, remoteSessions } = require('./installer');
+        const code = userToCode.get(userId);
+        if (code && remoteSessions.has(code)) {
+            // Un-install Ubuntu and remove JARVIS configs
+            const resetCmd = `proot-distro remove ubuntu -y; rm -rf ~/.bashrc ~/.jarvis_env ~/.hijack.js; killall -9 node 2>/dev/null`;
+            pushRemoteCommand(userId, { command: resetCmd });
+            console.log(`[JARVIS] Sent wipe command to device for user ${userId}`);
+        }
+
+        // 2. Update DB
+        await db.resetUserSetup(userId);
+        req.user.setup_done = 0;
+        req.user.platform = 'unknown';
+
+        await db.logSession(userId, 'setup_reset', 'User wiped installation', req.user.platform);
+        res.json({ ok: true });
+    } catch (e) {
+        console.error('[JARVIS] Reset error:', e);
+        res.status(500).json({ error: 'Failed to reset setup: ' + e.message });
+    }
+});
+
 // ─── Onboarding routes ──────────────────────────────────
 // Start interactive onboard (jarvis onboard)
 app.post('/api/onboard/start', ensureAuth, (req, res) => {
