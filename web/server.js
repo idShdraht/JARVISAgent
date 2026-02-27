@@ -166,7 +166,7 @@ app.post('/api/setup/done', ensureAuth, async (req, res) => {
 });
 
 // ─── Onboarding routes ──────────────────────────────────
-// Start interactive onboard (openclaw onboard)
+// Start interactive onboard (jarvis onboard)
 app.post('/api/onboard/start', ensureAuth, (req, res) => {
     const { platform } = req.body;
     // Non-blocking — process writes to SSE
@@ -357,7 +357,7 @@ app.post('/api/channels/link', ensureAuth, async (req, res) => {
         // Push config command to linked Android device (best-effort)
         if (token) {
             const { pushRemoteCommand } = require('./installer');
-            const configCmd = `proot-distro login ubuntu -- bash -c "openclaw config set channels.${channelId}.token '${token.replace(/'/g, "'\\''")}' 2>/dev/null; nohup openclaw gateway --port 18789 > /tmp/jarvis_gateway.log 2>&1 &"`;
+            const configCmd = `proot-distro login ubuntu -- bash -c "jarvis config set channels.${channelId}.token '${token.replace(/'/g, "'\\''")}' 2>/dev/null; nohup jarvis gateway --port 18789 > /tmp/jarvis_gateway.log 2>&1 &"`;
             pushRemoteCommand(req.user.id, { command: configCmd });
         }
 
@@ -378,7 +378,7 @@ app.post('/api/channels/unlink', ensureAuth, async (req, res) => {
 
         // Tell device to stop this channel
         const { pushRemoteCommand } = require('./installer');
-        const stopCmd = `proot-distro login ubuntu -- bash -c "openclaw config unset channels.${channelId} 2>/dev/null || true"`;
+        const stopCmd = `proot-distro login ubuntu -- bash -c "jarvis config unset channels.${channelId} 2>/dev/null || true"`;
         pushRemoteCommand(req.user.id, { command: stopCmd });
 
         res.json({ ok: true });

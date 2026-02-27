@@ -120,17 +120,17 @@ const buildOnboardCommand = (platform) => {
     switch (platform) {
         case 'linux':
         case 'mac':
-            // Inside proot Ubuntu: run openclaw onboard
+            // Inside proot Ubuntu: run jarvis onboard
             return {
                 cmd: 'bash',
-                args: ['-c', 'source ~/.jarvis_env 2>/dev/null; openclaw onboard 2>&1'],
+                args: ['-c', 'source ~/.jarvis_env 2>/dev/null; jarvis onboard 2>&1'],
                 shell: false,
             };
         case 'windows':
-            // On Windows: openclaw may be available via npm global
+            // On Windows: jarvis may be available via npm global
             return {
                 cmd: 'cmd.exe',
-                args: ['/c', 'openclaw onboard'],
+                args: ['/c', 'jarvis onboard'],
                 shell: false,
             };
         default:
@@ -346,8 +346,8 @@ const ensureWindowsScript = () => {
         'if ($wsl) {',
         '  wsl bash "' + root + '/jarvis.sh"',
         '} else {',
-        '  npm install -g openclaw@latest 2>&1',
-        '  Write-Host "Done! Run: openclaw onboard" -ForegroundColor Green',
+        '  npm install -g jarvis@latest 2>&1',
+        '  Write-Host "Done! Run: jarvis onboard" -ForegroundColor Green',
         '}',
     ].join('\n');
     fs.writeFileSync(dest, script);

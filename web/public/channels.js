@@ -4,36 +4,36 @@ const CHANNELS = [
     {
         id: 'whatsapp', name: 'WhatsApp', icon: '💬',
         desc: 'Link your WhatsApp number — JARVIS replies to your DMs',
-        setupType: 'qr', docs: 'https://docs.openclaw.ai/channels/whatsapp'
+        setupType: 'qr', docs: 'https://docs.jarvis.ai/channels/whatsapp'
     },
     {
         id: 'telegram', name: 'Telegram', icon: '✈️',
         desc: 'Connect a Telegram bot — anyone can message your JARVIS bot',
         setupType: 'token', tokenLabel: 'Bot Token from @BotFather',
-        docs: 'https://docs.openclaw.ai/channels/telegram'
+        docs: 'https://docs.jarvis.ai/channels/telegram'
     },
     {
         id: 'slack', name: 'Slack', icon: '💼',
         desc: 'Bring JARVIS into your Slack workspace',
         setupType: 'token', tokenLabel: 'Slack Bot Token (xoxb-...)',
-        docs: 'https://docs.openclaw.ai/channels/slack'
+        docs: 'https://docs.jarvis.ai/channels/slack'
     },
     {
         id: 'discord', name: 'Discord', icon: '🎮',
         desc: 'Run JARVIS as a Discord bot on your server',
         setupType: 'token', tokenLabel: 'Discord Bot Token',
-        docs: 'https://docs.openclaw.ai/channels/discord'
+        docs: 'https://docs.jarvis.ai/channels/discord'
     },
     {
         id: 'signal', name: 'Signal', icon: '🔒',
         desc: 'Private and encrypted — JARVIS via Signal',
-        setupType: 'info', info: 'Requires signal-cli on the device. Run: openclaw channels login --channel signal',
-        docs: 'https://docs.openclaw.ai/channels/signal'
+        setupType: 'info', info: 'Requires signal-cli on the device. Run: jarvis channels login --channel signal',
+        docs: 'https://docs.jarvis.ai/channels/signal'
     },
     {
         id: 'webchat', name: 'WebChat', icon: '🌐',
         desc: 'Built-in chat at localhost:18789 — active when gateway is running',
-        setupType: 'builtin', docs: 'https://docs.openclaw.ai/web/webchat'
+        setupType: 'builtin', docs: 'https://docs.jarvis.ai/web/webchat'
     },
 ];
 
@@ -205,7 +205,7 @@ window.linkWhatsApp = async () => {
         const r = await fetch('/api/android/command', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ command: 'proot-distro login ubuntu -- openclaw channels login --channel whatsapp' })
+            body: JSON.stringify({ command: 'proot-distro login ubuntu -- jarvis channels login --channel whatsapp' })
         });
         const d = await r.json();
         if (!d.ok) {
