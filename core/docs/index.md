@@ -5,7 +5,7 @@ read_when:
 title: "JARVIS"
 ---
 
-# JARVIS 🦞
+# JARVIS 🤖
 
 <p align="center">
     <img

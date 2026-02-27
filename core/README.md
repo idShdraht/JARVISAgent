@@ -1,4 +1,4 @@
-# 🦞 JARVIS — Personal AI Assistant
+# 🤖 JARVIS — Personal AI Assistant
 
 <p align="center">
     <picture>
@@ -482,7 +482,7 @@ Use these when you’re past the onboarding flow and want the deeper reference.
 
 ## Molty
 
-JARVIS was built for **Molty**, a space lobster AI assistant. 🦞
+JARVIS was built for **Molty**, a space lobster AI assistant. 🤖
 by Peter Steinberger and the community.
 
 - [jarvis.ai](https://jarvis.ai)

@@ -12,7 +12,7 @@ x-i18n:
   workflow: 15
 ---
 
-# JARVIS 🦞
+# JARVIS 🤖
 
 <p align="center">
     <img

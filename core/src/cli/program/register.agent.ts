@@ -219,7 +219,7 @@ ${theme.muted("Docs:")} ${formatDocsLink("/cli/agent", "docs.jarvis.ai/cli/agent
         `
 ${theme.heading("Examples:")}
 ${formatHelpExamples([
-  ['jarvis agents set-identity --agent main --name "JARVIS" --emoji "🦞"', "Set name + emoji."],
+  ['jarvis agents set-identity --agent main --name "JARVIS" --emoji "🤖"', "Set name + emoji."],
   ["jarvis agents set-identity --agent main --avatar avatars/jarvis.png", "Set avatar path."],
   [
     "jarvis agents set-identity --workspace ~/.jarvis/workspace --from-identity",

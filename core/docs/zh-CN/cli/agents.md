@@ -58,7 +58,7 @@ jarvis agents set-identity --workspace ~/.jarvis/workspace --from-identity
 显式覆盖字段：
 
 ```bash
-jarvis agents set-identity --agent main --name "JARVIS" --emoji "🦞" --avatar avatars/jarvis.png
+jarvis agents set-identity --agent main --name "JARVIS" --emoji "🤖" --avatar avatars/jarvis.png
 ```
 
 配置示例：
@@ -72,7 +72,7 @@ jarvis agents set-identity --agent main --name "JARVIS" --emoji "🦞" --avatar 
         identity: {
           name: "JARVIS",
           theme: "space lobster",
-          emoji: "🦞",
+          emoji: "🤖",
           avatar: "avatars/jarvis.png",
         },
       },

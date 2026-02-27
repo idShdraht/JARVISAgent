@@ -272,7 +272,7 @@ export async function launchJARVISChrome(
         name: profile.name,
         color: profile.color,
       });
-      log.info(`🦞 jarvis browser profile decorated (${profile.color})`);
+      log.info(`🤖 jarvis browser profile decorated (${profile.color})`);
     } catch (err) {
       log.warn(`jarvis browser profile decoration failed: ${String(err)}`);
     }
@@ -307,7 +307,7 @@ export async function launchJARVISChrome(
 
   const pid = proc.pid ?? -1;
   log.info(
-    `🦞 jarvis browser started (${exe.kind}) profile "${profile.name}" on 127.0.0.1:${profile.cdpPort} (pid ${pid})`,
+    `🤖 jarvis browser started (${exe.kind}) profile "${profile.name}" on 127.0.0.1:${profile.cdpPort} (pid ${pid})`,
   );
 
   return {

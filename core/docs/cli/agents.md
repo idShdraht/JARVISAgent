@@ -99,7 +99,7 @@ jarvis agents set-identity --workspace ~/.jarvis/workspace --from-identity
 Override fields explicitly:
 
 ```bash
-jarvis agents set-identity --agent main --name "JARVIS" --emoji "🦞" --avatar avatars/jarvis.png
+jarvis agents set-identity --agent main --name "JARVIS" --emoji "🤖" --avatar avatars/jarvis.png
 ```
 
 Config sample:
@@ -113,7 +113,7 @@ Config sample:
         identity: {
           name: "JARVIS",
           theme: "space lobster",
-          emoji: "🦞",
+          emoji: "🤖",
           avatar: "avatars/jarvis.png",
         },
       },

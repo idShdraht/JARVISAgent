@@ -10,6 +10,7 @@ $replacements.Add("openClaw", "jarvis")
 $replacements.Add("openclaw", "jarvis")
 $replacements.Add("Openclaw", "Jarvis")
 $replacements.Add("open-claw", "jarvis")
+$replacements.Add("🦞", "🤖")
 
 # 1. Replace content in files
 Get-ChildItem -Path $targetDir -Recurse -File -Exclude ".git", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.ico", "*.pdf", "*.zip", "pnpm-lock.yaml" | ForEach-Object {
