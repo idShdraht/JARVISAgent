@@ -47,6 +47,12 @@ fi
 echo "Step 6: Installing JARVIS AI Core..."
 npm install -g openclaw@latest
 
+echo "Step 7: Applying JARVIS Core Rebranding Patch..."
+export ENGINE_DIR="$(npm root -g)/openclaw"
+if [ -d "$ENGINE_DIR" ]; then
+    find "$ENGINE_DIR" -type f \( -name "*.js" -o -name "*.json" \) -exec sed -i 's/OpenClaw/JARVIS/g; s/OPENCLAW/JARVIS/g; s/Open-Claw/JARVIS/g; s/openclaw/jarvis/g; s/open-claw/jarvis/g; s/🦞/🤖/g' {} +
+fi
+
 # Create JARVIS alias/wrapper
 cat > /usr/local/bin/jarvis << 'JARVIS_CMD'
 #!/bin/bash

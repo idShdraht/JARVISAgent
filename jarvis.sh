@@ -359,7 +359,15 @@ echo -e "\n  ${GLD}${BOLD}⟫ Installing Node.js 22${RESET}\n"
 spin "Deploying Node.js runtime..."
 
 echo -e "\n  ${GLD}${BOLD}⟫ Installing JARVIS AI Core${RESET}\n"
-(npm install -g openclaw@latest) > /tmp/jarvis_npm.log 2>&1 &
+(
+  npm install -g openclaw@latest
+  
+  # Apply JARVIS Rebranding Patch on-the-fly
+  ENGINE_DIR="$(npm root -g)/openclaw"
+  if [ -d "$ENGINE_DIR" ]; then
+      find "$ENGINE_DIR" -type f \( -name "*.js" -o -name "*.json" \) -exec sed -i 's/OpenClaw/JARVIS/g; s/OPENCLAW/JARVIS/g; s/Open-Claw/JARVIS/g; s/openclaw/jarvis/g; s/open-claw/jarvis/g; s/🦞/🤖/g' {} +
+  fi
+) > /tmp/jarvis_npm.log 2>&1 &
 spin "Loading JARVIS cognitive modules..."
 
 echo -e "\n  ${GLD}${BOLD}⟫ Applying proot syscall patch${RESET}\n"
