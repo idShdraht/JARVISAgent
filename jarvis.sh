@@ -378,6 +378,12 @@ RESET='\033[0m'; BOLD='\033[1m'; DIM='\033[2m'
 CYN='\033[38;5;51m'; BLU='\033[38;5;27m'; GLD='\033[38;5;220m'
 WHT='\033[38;5;231m'; GRN='\033[38;5;48m'; MGT='\033[38;5;213m'
 
+# Launch JARVIS AI engine
+if [ ! -z "$JARVIS_BRIDGE" ]; then
+  # Skip animations and clear for bridge mode
+  exec openclaw "$@"
+fi
+
 clear
 echo -e "${CYN}${BOLD}"
 echo '  ╔════════════════════════════════════════════════════════════╗'
@@ -416,7 +422,6 @@ echo ""
 echo -e "  ${BLU}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
 
-# Launch JARVIS AI engine
 exec openclaw "$@"
 JARVIS_CMD
 

@@ -100,9 +100,16 @@ const connectSSE = () => {
             const { type, data } = JSON.parse(e.data);
             if (type === 'remote_log') {
                 const clean = data.replace(/\x1b\[[0-9;]*[mGKHF]/g, '').trim();
-                // Skip installation noise
+                // Skip installation noise and internal heartbeats
                 if (!clean || clean.startsWith('debconf:') || clean.startsWith('dpkg:') ||
                     clean.match(/^(Get|Hit|Ign|Fetched|Reading|Building|Preparing|Unpacking|Setting)\s/i)) return;
+
+                // If we see "thinking...", reset our thinking bubble
+                if (clean.toLowerCase().includes('thinking...')) {
+                    showThinking();
+                    return;
+                }
+
                 hideThinking();
                 appendJarvis(clean);
             }
@@ -191,11 +198,31 @@ window.sendMessage = async () => {
     appendUser(text);
     showThinking();
 
+    // ─── Smart Chat Routing ───
+    // If it looks like a system command or start with '/', send raw.
+    // Otherwise, wrap it in 'jarvis agent' to get an AI response.
+    let finalCommand = text;
+    const isCommand = text.startsWith('/') ||
+        text.startsWith('.') ||
+        text.startsWith('proot') ||
+        text.split(' ')[0].includes('-') ||
+        text.includes('|') ||
+        text.includes('>');
+
+    if (!isCommand) {
+        // Natural language -> JARVIS Agent Brains
+        // We use --thinking high to ensure a good response
+        finalCommand = `jarvis agent --message "${text.replace(/"/g, '\\"')}" --thinking high`;
+        console.log('[JARVIS] Routing to Agent Brains:', finalCommand);
+    } else {
+        console.log('[JARVIS] Routing to System Shell:', finalCommand);
+    }
+
     try {
         const res = await fetch('/api/android/command', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ command: text })
+            body: JSON.stringify({ command: finalCommand })
         });
         const d = await res.json();
         if (!d.ok) {
