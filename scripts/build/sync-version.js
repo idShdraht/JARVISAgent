@@ -49,8 +49,10 @@ pkg.name = "jarvis-agent";
 if (pkg.bin && pkg.bin.openclaw) {
     pkg.bin.jarvis = pkg.bin.openclaw;
     delete pkg.bin.openclaw;
+} else if (pkg.bin && pkg.bin.jarvis) {
+    // Already correct — keep as-is
 } else {
-    pkg.bin = { "jarvis": "./dist/cli.js" };
+    pkg.bin = { "jarvis": "./jarvis.mjs" };
 }
 
 fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));

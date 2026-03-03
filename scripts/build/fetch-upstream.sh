@@ -56,7 +56,7 @@ fi
 if [ "$REMOTE_OK" = "false" ]; then
     if [ -d "$LOCAL_SOURCE" ]; then
         echo "Using local core/ directory as upstream source..."
-        cp -r "$LOCAL_SOURCE" package
+        cp -rL "$LOCAL_SOURCE" package 2>/dev/null || cp -r "$LOCAL_SOURCE" package
         echo "Successfully copied local upstream payload to ./package/"
     else
         echo "FATAL: Neither remote fetch nor local core/ directory available."

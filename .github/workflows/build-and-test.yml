@@ -43,28 +43,10 @@ jobs:
       - name: Supply Chain Integrity Fetch
         run: bash scripts/build/fetch-upstream.sh
 
-      # ── AST Rebranding & Version Synthesis ─────────────────
-      - name: AST Rebranding & Version Synthesis
-        run: |
-          node scripts/build/rebrand-ast.js
-          node scripts/build/sync-version.js
-        env:
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-
-      # ── Drift detection (runs after npm ci) ────────────────
-      - name: Detect Semantic Drift
-        run: |
-          EXIT_CODE=0
-          node scripts/ci/drift-detector.js || EXIT_CODE=$?
-          if [ "$EXIT_CODE" -eq 1 ]; then
-            echo "FATAL: Upstream structural drift detected!"
-            exit 1
-          elif [ "$EXIT_CODE" -eq 2 ]; then
-            echo "WARNING: Drift detector precondition failed (exit code 2). Continuing."
-          fi
-
-      # ── Build (Node 22 only — core requires >=22.12) ──────
-      - name: Setup pnpm for upstream build
+      # ── pnpm setup + upstream deps (before AST rebranding) ─
+      # ts-morph needs the project's types resolved, which requires
+      # dependencies to be installed first
+      - name: Setup pnpm
         if: matrix.node-version == '22.x'
         run: |
           corepack enable
@@ -75,6 +57,28 @@ jobs:
         run: pnpm install --no-frozen-lockfile
         working-directory: ./package
 
+      # ── AST Rebranding & Version Synthesis (after deps) ────
+      - name: AST Rebranding & Version Synthesis
+        if: matrix.node-version == '22.x'
+        run: |
+          node scripts/build/rebrand-ast.js
+          node scripts/build/sync-version.js
+        env:
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+
+      # ── Drift detection ────────────────────────────────────
+      - name: Detect Semantic Drift
+        run: |
+          EXIT_CODE=0
+          node scripts/ci/drift-detector.js || EXIT_CODE=$?
+          if [ "$EXIT_CODE" -eq 1 ]; then
+            echo "FATAL: Upstream structural drift detected!"
+            exit 1
+          elif [ "$EXIT_CODE" -eq 2 ]; then
+            echo "WARNING: Drift detector precondition failure (exit 2). Continuing."
+          fi
+
+      # ── Build (Node 22 only — core requires >=22.12) ──────
       - name: Build Payload
         if: matrix.node-version == '22.x'
         run: pnpm run build
@@ -92,30 +96,29 @@ jobs:
       # ── Smoke test (Node 22 only, cross-platform timeout) ──
       - name: System Smoke Test & Timeout Guards
         if: matrix.node-version == '22.x'
+        continue-on-error: true
         run: |
           cd package
           node -e "
             const { spawn } = require('child_process');
-            const proc = spawn('node', ['dist/cli.js', 'onboard', '--flow', 'quickstart', '--accept-risk', '--non-interactive'], { stdio: 'inherit' });
+            const proc = spawn('node', ['jarvis.mjs', 'onboard', '--flow', 'quickstart', '--accept-risk', '--non-interactive'], { stdio: 'inherit' });
             const timer = setTimeout(() => { proc.kill(); process.exit(0); }, 20000);
             proc.on('close', (code) => { clearTimeout(timer); process.exit(0); });
             proc.on('error', () => { clearTimeout(timer); process.exit(0); });
-          " || true
+          "
 
       # ── Gateway health check (Node 22, Linux/macOS only) ───
       - name: EADDRINUSE Resilience & Health Check
         if: matrix.node-version == '22.x' && runner.os != 'Windows'
+        continue-on-error: true
         run: |
           cd package
 
-          # Start gateway with EADDRINUSE fallback
           node -e "
-            const http = require('http');
             const { spawn } = require('child_process');
             const fs = require('fs');
 
-            // Try default port, fallback to 0 (ephemeral) on EADDRINUSE
-            const proc = spawn('node', ['dist/jarvis.mjs', 'gateway', '--port', '18789'], {
+            const proc = spawn('node', ['jarvis.mjs', 'gateway', '--port', '18789'], {
               stdio: ['ignore', 'pipe', 'pipe'],
               detached: false
             });
@@ -124,7 +127,6 @@ jobs:
             proc.stdout.on('data', (d) => { logData += d.toString(); });
             proc.stderr.on('data', (d) => { logData += d.toString(); });
 
-            // Write log for port extraction
             setTimeout(() => {
               fs.writeFileSync('gateway.log', logData);
               proc.kill();
@@ -132,14 +134,14 @@ jobs:
             }, 5000);
 
             proc.on('error', () => process.exit(0));
-          " || true
+          "
 
           if [ -f gateway.log ]; then
             BOUND_PORT=$(node ../scripts/ci/extract-port.js gateway.log 2>/dev/null) || true
             if [ -n "$BOUND_PORT" ]; then
               echo "Gateway bound at port $BOUND_PORT"
             else
-              echo "WARNING: Could not extract gateway port. Gateway may not have started."
+              echo "WARNING: Could not extract gateway port."
             fi
           fi
 
@@ -149,8 +151,8 @@ jobs:
         continue-on-error: true
         run: |
           cd package
-          node dist/cli.js skills install openclaw-test-skill 2>/dev/null || echo "Skill install skipped (not available)"
-          node dist/cli.js skills run openclaw-test-skill 2>/dev/null | grep "success" || echo "Skill test skipped or not applicable"
+          node jarvis.mjs skills install openclaw-test-skill 2>/dev/null || echo "Skill install skipped"
+          node jarvis.mjs skills run openclaw-test-skill 2>/dev/null | grep "success" || echo "Skill test skipped"
 
   publish-next:
     name: Synthesized Deployment to next region
