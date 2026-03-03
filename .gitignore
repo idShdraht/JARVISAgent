@@ -6,3 +6,7 @@ web/.env
 *.log
 .DS_Store
 Thumbs.db
+.artifact-verify-tmp/
+upstream.tar.gz
+upstream.sha256
+package/
