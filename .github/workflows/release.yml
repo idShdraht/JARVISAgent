@@ -1,0 +1,32 @@
+name: JARVIS Latest Region Promotion 
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Exact JARVIS semantic synthesize version to promote (e.g., 2026.2.26-jarvis.123)'
+        required: true
+        type: string
+      confirmation:
+        description: 'Type I VERIFY NO STRUCTURAL DRIFT CATASTROPHES.'
+        required: true
+        type: string
+
+jobs:
+  promote-to-latest:
+    name: Promote from next to latest region
+    runs-on: ubuntu-latest
+    if: inputs.confirmation == 'I VERIFY NO STRUCTURAL DRIFT CATASTROPHES.'
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Execute Governance Tag Re-alias
+        run: |
+          echo "Promoting specific JARVIS package boundary to latest stream."
+          npm dist-tag add jarvis-agent@${{ github.event.inputs.version }} latest
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
