@@ -222,7 +222,8 @@ jobs:
       - name: Publish Strict Next Block
         run: |
           cd package
-          npm publish --tag next --provenance --access public
+          echo "=== Publishing package ==="
+          node -e "const p=JSON.parse(require('fs').readFileSync('package.json','utf8'));console.log('name:',p.name,'version:',p.version)"
+          npm publish --tag next --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
